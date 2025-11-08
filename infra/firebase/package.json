@@ -1,0 +1,14 @@
+{
+  "name": "@take-a-break/firebase",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@take-a-break/config": "workspace:*",
+    "firebase-admin": "^11.10.1"
+  }
+}

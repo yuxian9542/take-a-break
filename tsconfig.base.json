@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "NodeNext",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@take-a-break/config": ["packages/config/src/index.ts"],
+      "@take-a-break/firebase": ["infra/firebase/src/index.ts"],
+      "@take-a-break/types": ["packages/types/src/index.ts"],
+      "@take-a-break/types/*": ["packages/types/src/*"]
+    }
+  },
+  "include": ["packages", "services", "infra"]
+}

@@ -1,0 +1,25 @@
+{
+  "name": "take-a-break",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@8.15.4",
+  "scripts": {
+    "dev:api": "pnpm --filter @take-a-break/api dev",
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r run lint"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.19",
+    "tsx": "^4.7.1",
+    "typescript": "^5.3.3"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*",
+    "infra/*"
+  ],
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}
