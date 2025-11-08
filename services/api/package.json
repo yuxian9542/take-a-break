@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^8.4.0",
-    "@fastify/helmet": "^12.1.1",
+    "@fastify/helmet": "^11.1.1",
     "@fastify/swagger": "^8.10.0",
     "@take-a-break/config": "workspace:*",
     "@take-a-break/firebase": "workspace:*",
