@@ -1,0 +1,737 @@
+openapi: 3.0.3
+info:
+  title: Take a Break API
+  description: |
+    API for managing break plans, history, map services, and voice sessions.
+    
+    All authenticated endpoints require Firebase JWT token in the Authorization header.
+  version: 0.1.0
+servers:
+  - url: http://localhost:3333
+    description: Local development server
+  - url: https://api.take-a-break.com
+    description: Production server
+tags:
+  - name: Public
+    description: Public endpoints (no authentication required)
+  - name: Break Plans
+    description: Break plan management
+  - name: History
+    description: Break history and statistics
+  - name: Map
+    description: Map and location services
+  - name: Voice
+    description: Voice session WebSocket
+security:
+  - FirebaseAuth: []
+components:
+  securitySchemes:
+    FirebaseAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase JWT token
+  schemas:
+    ErrorDetail:
+      type: object
+      properties:
+        field:
+          type: string
+        issue:
+          type: string
+      required:
+        - field
+        - issue
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                $ref: '#/components/schemas/ErrorDetail'
+            timestamp:
+              type: string
+              format: date-time
+            trace_id:
+              type: string
+              format: uuid
+          required:
+            - code
+            - message
+            - details
+            - timestamp
+            - trace_id
+      required:
+        - success
+        - error
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+        meta:
+          type: object
+          properties:
+            cursor:
+              type: string
+            hasMore:
+              type: boolean
+      required:
+        - success
+        - data
+    HealthData:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        timestamp:
+          type: string
+          format: date-time
+        environment:
+          type: string
+      required:
+        - status
+        - timestamp
+        - environment
+    MetaConfigData:
+      type: object
+      properties:
+        environment:
+          type: string
+        features:
+          type: array
+          items:
+            type: string
+        firebase:
+          type: object
+          properties:
+            projectId:
+              type: string
+            storageBucket:
+              type: string
+      required:
+        - environment
+        - features
+    Location:
+      type: object
+      properties:
+        address:
+          type: string
+        coordinates:
+          type: object
+          properties:
+            lat:
+              type: number
+            lng:
+              type: number
+          required:
+            - lat
+            - lng
+      required:
+        - address
+        - coordinates
+    LocationCoordinates:
+      type: object
+      description: Simple location with only coordinates (for request)
+      properties:
+        lat:
+          type: number
+        lng:
+          type: number
+      required:
+        - lat
+        - lng
+    BreakPlan:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        duration:
+          type: number
+          description: Duration in minutes
+        location:
+          $ref: '#/components/schemas/Location'
+        type:
+          type: string
+          enum: [breath, walk]
+          description: Extensible enum, can include other values
+        feeling:
+          type: string
+          description: Original user feeling/state when plan was requested
+        chosen:
+          type: boolean
+          description: True when user selects this plan
+        order:
+          type: number
+          description: Order in which plans appear in frontend (0, 1, 2, ...)
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        user_id:
+          type: string
+      required:
+        - id
+        - title
+        - description
+        - duration
+        - location
+        - type
+        - feeling
+        - chosen
+        - order
+        - created_at
+        - updated_at
+        - user_id
+    CreateBreakPlanRequest:
+      type: object
+      properties:
+        duration:
+          type: number
+          description: Duration in minutes
+        location:
+          $ref: '#/components/schemas/LocationCoordinates'
+        feeling:
+          type: string
+          description: User's current feeling/state
+        request_time:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when the request was made
+        user_id:
+          type: string
+      required:
+        - duration
+        - location
+        - feeling
+        - request_time
+        - user_id
+    BreakPlanListResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/BreakPlan'
+    HistoryItem:
+      type: object
+      properties:
+        time:
+          type: string
+          format: date-time
+        title:
+          type: string
+        duration:
+          type: number
+          description: Duration in minutes
+      required:
+        - time
+        - title
+        - duration
+    HistoryResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoryItem'
+        cursor:
+          type: string
+          description: ISO 8601 timestamp or UUID for next page
+        hasMore:
+          type: boolean
+      required:
+        - items
+        - hasMore
+    Coordinates:
+      type: object
+      properties:
+        lat:
+          type: number
+        lng:
+          type: number
+      required:
+        - lat
+        - lng
+    NearbyLocation:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
+        distance:
+          type: number
+          description: Distance in meters
+        category:
+          type: string
+      required:
+        - name
+        - address
+        - coordinates
+        - distance
+        - category
+    NearbyResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/NearbyLocation'
+    RouteWaypoint:
+      type: object
+      properties:
+        lat:
+          type: number
+        lng:
+          type: number
+      required:
+        - lat
+        - lng
+    RouteRequest:
+      type: object
+      properties:
+        start:
+          $ref: '#/components/schemas/Coordinates'
+        end:
+          $ref: '#/components/schemas/Coordinates'
+        waypoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouteWaypoint'
+      required:
+        - start
+        - end
+    RouteResponse:
+      type: object
+      properties:
+        distance:
+          type: number
+          description: Distance in meters
+        duration:
+          type: number
+          description: Duration in seconds
+        polyline:
+          type: string
+          description: Encoded polyline string for map rendering
+      required:
+        - distance
+        - duration
+        - polyline
+paths:
+  /health:
+    get:
+      tags:
+        - Public
+      summary: Health check
+      description: Returns the health status of the API
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/HealthData'
+  /meta/config:
+    get:
+      tags:
+        - Public
+      summary: Get configuration metadata
+      description: Returns public configuration information
+      security: []
+      responses:
+        '200':
+          description: Configuration metadata
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MetaConfigData'
+  /break/plans:
+    get:
+      tags:
+        - Break Plans
+      summary: List break plans
+      description: Get all break plans for the authenticated user
+      responses:
+        '200':
+          description: List of break plans
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/BreakPlanListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Break Plans
+      summary: Create break plans
+      description: |
+        Create multiple break plans. The LLM agent generates multiple plans based on the user's feeling and location.
+        The server will auto-generate id, created_at, updated_at, chosen (false), and order for each plan.
+        All generated plans are stored in Firestore and returned in the response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBreakPlanRequest'
+      responses:
+        '201':
+          description: Break plans created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/BreakPlanListResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /break/plans/{id}/chosen:
+    patch:
+      tags:
+        - Break Plans
+      summary: Mark break plan as chosen
+      description: |
+        Set the `chosen` field to `true` for a specific break plan.
+        Only the plan owner can mark their own plan as chosen.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Break plan ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Break plan updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/BreakPlan'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Plan does not belong to user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Break plan not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /history:
+    get:
+      tags:
+        - History
+      summary: Get break history
+      description: |
+        Get paginated list of past break sessions using cursor-based pagination.
+        Default limit is 7 items per page.
+      parameters:
+        - name: cursor
+          in: query
+          description: Cursor for pagination (ISO 8601 timestamp or UUID)
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: "Number of items per page (default: 7)"
+          required: false
+          schema:
+            type: integer
+            default: 7
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: Paginated history response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/HistoryResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /map/nearby:
+    get:
+      tags:
+        - Map
+      summary: Find nearby locations
+      description: Find locations near a given point
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          description: Latitude (WGS84 decimal degrees)
+          schema:
+            type: number
+            format: double
+        - name: lng
+          in: query
+          required: true
+          description: Longitude (WGS84 decimal degrees)
+          schema:
+            type: number
+            format: double
+        - name: radius
+          in: query
+          required: true
+          description: Search radius in meters
+          schema:
+            type: number
+            minimum: 1
+        - name: category
+          in: query
+          required: false
+          description: Location category filter
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of nearby locations
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/NearbyResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /map/route:
+    get:
+      tags:
+        - Map
+      summary: Calculate route (GET)
+      description: Calculate route from start to end with optional waypoints
+      parameters:
+        - name: start_lat
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: start_lng
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: end_lat
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: end_lng
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: waypoints
+          in: query
+          required: false
+          description: JSON array of waypoint coordinates
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Route information
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RouteResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Map
+      summary: Calculate route (POST)
+      description: Calculate route from start to end with optional waypoints
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteRequest'
+      responses:
+        '200':
+          description: Route information
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RouteResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /voice/session:
+    get:
+      tags:
+        - Voice
+      summary: WebSocket connection endpoint
+      description: |
+        WebSocket endpoint for real-time voice interaction.
+        
+        Connect using WebSocket protocol with Firebase JWT token:
+        - In query parameter: `?token=<jwt-token>`
+        - Or in Authorization header: `Authorization: Bearer <jwt-token>`
+        
+        Message format: JSON with type field indicating message type (audio, text, status, error).
+      security:
+        - FirebaseAuth: []
+      responses:
+        '101':
+          description: Switching Protocols (WebSocket upgrade)
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+

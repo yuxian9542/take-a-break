@@ -6,12 +6,20 @@
   "scripts": {
     "dev:api": "pnpm --filter @take-a-break/api dev",
     "build": "pnpm -r run build",
-    "lint": "pnpm -r run lint"
+    "lint": "pnpm -r run lint",
+    "validate:openapi": "tsx scripts/validate-openapi.ts",
+    "validate:types": "tsx scripts/validate-types.ts",
+    "validate:docs": "tsx scripts/validate-docs.ts",
+    "validate:all": "tsx scripts/validate-all.ts",
+    "validate:watch": "tsx scripts/watch-validate.ts"
   },
   "devDependencies": {
+    "@apidevtools/swagger-parser": "^10.1.0",
     "@types/node": "^20.11.19",
+    "openapi-typescript": "^6.7.4",
     "tsx": "^4.7.1",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "yaml": "^2.3.4"
   },
   "workspaces": [
     "apps/*",

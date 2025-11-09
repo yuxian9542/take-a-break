@@ -1,8 +1,15 @@
 import Fastify from 'fastify';
 import fastifyCors from '@fastify/cors';
 import fastifyHelmet from '@fastify/helmet';
-import fastifySwagger from '@fastify/swagger';
 import publicRoutes from './routes/public.js';
+import breakRoutes from './routes/break.js';
+import historyRoutes from './routes/history.js';
+import mapRoutes from './routes/map.js';
+import voiceRoutes from './routes/voice.js';
+import validationPlugin from './plugins/validation.js';
+import errorHandler from './middleware/error-handler.js';
+import authMiddleware from './middleware/auth.js';
+import rateLimit from './middleware/rate-limit.js';
 import { loadConfig } from '@take-a-break/config';
 import { ensureFirebaseApp } from '@take-a-break/firebase';
 
@@ -19,19 +26,29 @@ export async function buildServer() {
 
   await fastify.register(fastifyHelmet);
 
-  if (config.ENABLE_SWAGGER) {
-    await fastify.register(fastifySwagger, {
-      openapi: {
-        info: {
-          title: 'Take a Break API',
-          description: 'Public endpoints for health checks and metadata',
-          version: '0.1.0'
-        }
-      }
-    });
-  }
+  // Register validation plugin (includes Swagger/Swagger UI)
+  await fastify.register(validationPlugin);
 
+  // Register error handler
+  await fastify.register(errorHandler);
+
+  // Register authentication middleware
+  // TODO: Apply to protected routes only
+  await fastify.register(authMiddleware);
+
+  // Register rate limiting
+  // TODO: Apply to specific routes based on configuration
+  await fastify.register(rateLimit);
+
+  // Register public routes (no authentication required)
   await fastify.register(publicRoutes);
+
+  // Register protected routes (authentication required)
+  // TODO: Apply authentication middleware to these routes
+  await fastify.register(breakRoutes);
+  await fastify.register(historyRoutes);
+  await fastify.register(mapRoutes);
+  await fastify.register(voiceRoutes);
 
   ensureFirebaseApp();
 

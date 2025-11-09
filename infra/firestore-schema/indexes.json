@@ -1,0 +1,127 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "break_plans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "user_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
+      ],
+      "description": "For listing user's break plans ordered by creation time"
+    },
+    {
+      "collectionGroup": "break_plans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "user_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "chosen",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
+      ],
+      "description": "For filtering chosen plans by user"
+    },
+    {
+      "collectionGroup": "break_plans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "user_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "order",
+          "order": "ASCENDING"
+        }
+      ],
+      "description": "For ordering plans as they appear in frontend"
+    },
+    {
+      "collectionGroup": "history",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "user_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "started_at",
+          "order": "DESCENDING"
+        }
+      ],
+      "description": "For paginated history query ordered by start time"
+    },
+    {
+      "collectionGroup": "history",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "user_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "started_at",
+          "order": "DESCENDING"
+        }
+      ],
+      "description": "For filtering history by status"
+    },
+    {
+      "collectionGroup": "voice_conversations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "user_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "started_at",
+          "order": "DESCENDING"
+        }
+      ],
+      "description": "For listing user's voice conversations ordered by start time"
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "users",
+      "fieldPath": "email",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        }
+      ],
+      "description": "Unique index for email lookups"
+    },
+    {
+      "collectionGroup": "voice_conversations",
+      "fieldPath": "session_id",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        }
+      ],
+      "description": "Unique index for session lookups"
+    }
+  ]
+}
+

@@ -1,0 +1,17 @@
+{
+  "name": "@take-a-break/firestore-schema",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.10.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
+

@@ -1,3 +1,84 @@
+## 如何运行项目
+
+### 前置要求
+
+- **Node.js**: >= 18.17.0
+- **pnpm**: >= 8.15.4（项目使用 pnpm 作为包管理器）
+
+### 安装依赖
+
+```bash
+# 安装 pnpm（如果尚未安装）
+npm install -g pnpm@8.15.4
+
+# 在项目根目录安装所有依赖
+pnpm install
+```
+
+### 环境变量配置
+
+在项目根目录创建 `.env` 文件，配置以下环境变量：
+
+```bash
+# 应用环境（development | staging | production）
+APP_ENV=development
+
+# API 服务端口（默认：3333）
+PORT=3333
+
+# Firebase 配置（可选，如果使用 Firebase 功能）
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_CLIENT_EMAIL=your-service-account-email
+FIREBASE_PRIVATE_KEY=your-private-key
+FIREBASE_DATABASE_URL=https://your-project.firebaseio.com
+FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+
+# 公开功能列表（逗号分隔，默认：break-planner,map,voice）
+PUBLIC_FEATURES=break-planner,map,voice
+
+# 是否启用 Swagger 文档（默认：true）
+ENABLE_SWAGGER=true
+```
+
+> **注意**: 如果只是本地开发测试，Firebase 相关配置可以暂时不设置（某些功能可能不可用）。
+
+### 运行 API 服务
+
+```bash
+# 启动开发服务器（支持热重载）
+pnpm dev:api
+```
+
+服务启动后，默认运行在 `http://localhost:3333`。
+
+### 可用的 API 端点
+
+- `GET /health` - 健康检查
+- `GET /meta/config` - 获取配置信息
+
+> **提示**: Swagger OpenAPI 规范已启用（如果 `ENABLE_SWAGGER=true`），可用于生成 API 文档。
+
+### 其他命令
+
+```bash
+# 构建所有包和服务
+pnpm build
+
+# 运行所有包的 lint 检查
+pnpm lint
+```
+
+### 项目结构说明
+
+这是一个 monorepo 项目，使用 pnpm workspaces 管理多个包和服务：
+
+- `apps/` - 应用层（如移动端应用）
+- `packages/` - 共享包（类型、配置、UI 组件等）
+- `services/` - 后端服务（API、业务服务等）
+- `infra/` - 基础设施（Firebase、CI/CD 等）
+
+---
+
 ## 它们如何互相使用（依赖 / 数据流）
 
 ### 客户端链路

@@ -1,10 +1,23 @@
-export interface HealthResponse {
+import type { SuccessResponse } from './error.js';
+
+/**
+ * Health check data
+ */
+export interface HealthData {
   status: 'ok';
   timestamp: string;
   environment: string;
 }
 
-export interface MetaConfigResponse {
+/**
+ * Health check response using unified format
+ */
+export type HealthResponse = SuccessResponse<HealthData>;
+
+/**
+ * Meta config data
+ */
+export interface MetaConfigData {
   environment: string;
   features: string[];
   firebase?: {
@@ -12,3 +25,8 @@ export interface MetaConfigResponse {
     storageBucket?: string;
   };
 }
+
+/**
+ * Meta config response using unified format
+ */
+export type MetaConfigResponse = SuccessResponse<MetaConfigData>;

@@ -8,9 +8,12 @@ async function publicRoutes(fastify: FastifyInstance) {
     const config = loadConfig();
 
     return {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      environment: config.APP_ENV
+      success: true,
+      data: {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        environment: config.APP_ENV
+      }
     };
   });
 
@@ -18,11 +21,14 @@ async function publicRoutes(fastify: FastifyInstance) {
     const config = loadConfig();
 
     return {
-      environment: config.APP_ENV,
-      features: config.PUBLIC_FEATURES,
-      firebase: {
-        projectId: config.FIREBASE_PROJECT_ID,
-        storageBucket: config.FIREBASE_STORAGE_BUCKET
+      success: true,
+      data: {
+        environment: config.APP_ENV,
+        features: config.PUBLIC_FEATURES,
+        firebase: {
+          projectId: config.FIREBASE_PROJECT_ID,
+          storageBucket: config.FIREBASE_STORAGE_BUCKET
+        }
       }
     };
   });
