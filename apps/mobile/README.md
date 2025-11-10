@@ -1,3 +1,9 @@
-# Mobile App (React Native)
+# Mobile App
 
-This package will host the React Native client. It currently serves as a placeholder to document the intended structure for future work.
+This package hosts the React/Vite frontend client for the Take a Break mobile application.
+
+## Running the code
+
+Run `pnpm install` to install the dependencies.
+
+Run `pnpm dev` to start the development server.

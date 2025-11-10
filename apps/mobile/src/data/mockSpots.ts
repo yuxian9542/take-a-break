@@ -1,0 +1,134 @@
+export interface RelaxationSpot {
+  id: string;
+  name: string;
+  category: 'park' | 'cafe' | 'waterfront' | 'quiet_space' | 'indoor';
+  coordinates: {
+    latitude: number;
+    longitude: number;
+  };
+  description: string;
+  photoUrl?: string;
+  crowdLevel: 'low' | 'medium' | 'high';
+  openingHours?: string;
+  amenities: string[];
+  walkingDistance: number; // meters
+  eta: number; // minutes walking
+}
+
+export const mockSpots: RelaxationSpot[] = [
+  {
+    id: 'spot_001',
+    name: 'Riverside Park - Cherry Walk',
+    category: 'park',
+    coordinates: { latitude: 40.7829, longitude: -73.9654 },
+    description: 'Peaceful tree-lined path along the Hudson River. Perfect for clearing your mind with gentle sounds of water and nature.',
+    crowdLevel: 'low',
+    amenities: ['benches', 'shade', 'water_view', 'quiet'],
+    walkingDistance: 450,
+    eta: 6,
+  },
+  {
+    id: 'spot_002',
+    name: 'Tranquil Grounds Cafe',
+    category: 'cafe',
+    coordinates: { latitude: 40.7825, longitude: -73.9700 },
+    description: 'Cozy coffee shop with comfortable seating and a calm atmosphere. Great for quiet reflection over a warm drink.',
+    crowdLevel: 'medium',
+    openingHours: '7am - 8pm',
+    amenities: ['wifi', 'indoor_seating', 'outdoor_patio', 'quiet_corners'],
+    walkingDistance: 320,
+    eta: 4,
+  },
+  {
+    id: 'spot_003',
+    name: 'Hudson River Overlook',
+    category: 'waterfront',
+    coordinates: { latitude: 40.7835, longitude: -73.9640 },
+    description: 'Scenic viewpoint overlooking the Hudson River. The water and skyline create a peaceful backdrop for contemplation.',
+    crowdLevel: 'low',
+    amenities: ['benches', 'scenic_view', 'shade', 'open_air'],
+    walkingDistance: 550,
+    eta: 7,
+  },
+  {
+    id: 'spot_004',
+    name: 'Central Park - Conservatory Garden',
+    category: 'park',
+    coordinates: { latitude: 40.7945, longitude: -73.9520 },
+    description: 'Quiet formal garden away from the main park crowds. Beautiful seasonal flowers and peaceful walking paths.',
+    crowdLevel: 'low',
+    amenities: ['gardens', 'benches', 'quiet', 'scenic'],
+    walkingDistance: 1200,
+    eta: 15,
+  },
+  {
+    id: 'spot_005',
+    name: 'Public Library Reading Room',
+    category: 'indoor',
+    coordinates: { latitude: 40.7532, longitude: -73.9822 },
+    description: 'Magnificent quiet reading room with high ceilings and natural light. Perfect indoor retreat.',
+    crowdLevel: 'low',
+    openingHours: '10am - 6pm',
+    amenities: ['quiet', 'seating', 'climate_controlled', 'inspiring_architecture'],
+    walkingDistance: 800,
+    eta: 10,
+  },
+  {
+    id: 'spot_006',
+    name: 'Meditation Corner - 82nd Street',
+    category: 'quiet_space',
+    coordinates: { latitude: 40.7845, longitude: -73.9710 },
+    description: 'Small community meditation space with cushions and peaceful ambiance. Drop-in welcome.',
+    crowdLevel: 'low',
+    openingHours: '8am - 8pm',
+    amenities: ['cushions', 'quiet', 'indoor', 'free'],
+    walkingDistance: 280,
+    eta: 4,
+  },
+  {
+    id: 'spot_007',
+    name: 'Riverside Park - Dog Hill',
+    category: 'park',
+    coordinates: { latitude: 40.7890, longitude: -73.9635 },
+    description: 'Open green space with gentle hills and playful dogs. Uplifting energy and nature.',
+    crowdLevel: 'medium',
+    amenities: ['open_space', 'grass', 'dog_friendly', 'benches'],
+    walkingDistance: 650,
+    eta: 8,
+  },
+  {
+    id: 'spot_008',
+    name: 'Bloom Coffee Roasters',
+    category: 'cafe',
+    coordinates: { latitude: 40.7818, longitude: -73.9720 },
+    description: 'Minimalist cafe with excellent coffee and quiet atmosphere. Perfect for mindful breaks.',
+    crowdLevel: 'medium',
+    openingHours: '7am - 6pm',
+    amenities: ['coffee', 'pastries', 'wifi', 'window_seating'],
+    walkingDistance: 400,
+    eta: 5,
+  },
+  {
+    id: 'spot_009',
+    name: 'Pier 84 - Hudson River Park',
+    category: 'waterfront',
+    coordinates: { latitude: 40.7650, longitude: -73.9970 },
+    description: 'Long pier extending into the Hudson with unobstructed water views and fresh air.',
+    crowdLevel: 'medium',
+    amenities: ['water_view', 'benches', 'fresh_air', 'sunset_views'],
+    walkingDistance: 900,
+    eta: 11,
+  },
+  {
+    id: 'spot_010',
+    name: 'Museum of Natural History - Quiet Halls',
+    category: 'indoor',
+    coordinates: { latitude: 40.7813, longitude: -73.9740 },
+    description: 'Less crowded museum halls perfect for contemplative walking and wonder.',
+    crowdLevel: 'low',
+    openingHours: '10am - 5:45pm',
+    amenities: ['climate_controlled', 'seating', 'inspiring', 'educational'],
+    walkingDistance: 500,
+    eta: 6,
+  },
+];

@@ -1,0 +1,53 @@
+› Skipping dev server
+› Planning build
+› Preparing Pods/expo-dev-menu-EXDevMenu » ResourceBundle-EXDevMenu-expo-dev-menu-Info.plist
+› Preparing Pods/ExpoFileSystem-ExpoFileSystem_privacy » ResourceBundle-ExpoFileSystem_privacy-ExpoFileSystem-Info.plist
+› Preparing Pods/EXConstants-ExpoConstants_privacy » ResourceBundle-ExpoConstants_privacy-EXConstants-Info.plist
+› Executing react-native Pods/hermes-engine » [CP-User] [Hermes] Replace Hermes for the right configuration, if needed
+› Executing react-native Pods/ReactNativeDependencies » [CP-User] [RNDeps] Replace React Native Dependencies for the right configuration, if needed
+› Preparing expo-constants Pods/EXConstants-EXConstants » ResourceBundle-EXConstants-EXConstants-Info.plist
+› Preparing Pods/React-cxxreact-React-cxxreact_privacy » ResourceBundle-React-cxxreact_privacy-React-cxxreact-Info.plist
+› Preparing Pods/React-Core-React-Core_privacy » ResourceBundle-React-Core_privacy-React-Core-Info.plist
+› Preparing Pods/RNSVG-RNSVGFilters » ResourceBundle-RNSVGFilters-RNSVG-Info.plist
+› Preparing Pods/expo-dev-launcher-EXDevLauncher » ResourceBundle-EXDevLauncher-expo-dev-launcher-Info.plist
+› Executing react-native Pods/React-Core-prebuilt » [CP-User] [RNDeps] Replace React Native Core for the right configuration, if needed
+› Executing react-native Pods/React-RCTFBReactNativeSpec » [CP-User] [RN]Check FBReactNativeSpec
+› Compiling @take-a-break/mobile Pods/ReactAppDependencyProvider » RCTAppDependencyProvider.mm
+› Compiling @take-a-break/mobile Pods/ReactCodegen » ComponentDescriptors.cpp
+› Compiling react-native-reanimated Pods/RNReanimated » ShadowTreeCloner.cpp
+
+❌  (ios/Pods/Headers/Public/ReactNativeDependencies/folly/Expected.h:1587:10)
+
+  1585 | // Inspired by https://github.com/toby-allsopp/coroutine_monad
+  1586 | #if FOLLY_HAS_COROUTINES
+> 1587 | #include <folly/coro/Coroutine.h>
+       |          ^ 'folly/coro/Coroutine.h' file not found
+  1588 | 
+  1589 | namespace folly {
+  1590 | namespace expected_detail {
+
+› Compiling react-native-reanimated Pods/RNReanimated » ReanimatedVersion.cpp
+› Compiling react-native-reanimated Pods/RNReanimated » ReanimatedRuntime.cpp
+
+❌  (ios/Pods/Headers/Public/ReactNativeDependencies/folly/Expected.h:1587:10)
+
+  1585 | // Inspired by https://github.com/toby-allsopp/coroutine_monad
+  1586 | #if FOLLY_HAS_COROUTINES
+> 1587 | #include <folly/coro/Coroutine.h>
+       |          ^ 'folly/coro/Coroutine.h' file not found
+  1588 | 
+  1589 | namespace folly {
+  1590 | namespace expected_detail {
+
+› Compiling @take-a-break/mobile Pods/ReactCodegen » ComponentDescriptors.cpp
+› Compiling react-native-reanimated Pods/RNReanimated » ReanimatedMountHook.cpp
+› Compiling react-native-reanimated Pods/RNReanimated » ReanimatedJSIUtils.cpp
+› Compiling react-native-reanimated Pods/RNReanimated » ReanimatedHermesRuntime.cpp
+› Compiling react-native-reanimated Pods/RNReanimated » ReanimatedCommitHook.cpp
+› Compiling react-native-reanimated Pods/RNReanimated » RNRuntimeDecorator.cpp
+› Compiling react-native-reanimated Pods/RNReanimated » REASwizzledUIManager.mm
+    Run script build phase '[CP-User] [Hermes] Replace Hermes for the right configuration, if needed' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'hermes-engine' from project 'Pods')
+
+› 2 error(s), and 1 warning(s)
+
+CommandError: Failed to build iOS project. "xcodebuild" exited with error code 65.
