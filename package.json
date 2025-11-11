@@ -11,7 +11,11 @@
     "validate:types": "tsx scripts/validate-types.ts",
     "validate:docs": "tsx scripts/validate-docs.ts",
     "validate:all": "tsx scripts/validate-all.ts",
-    "validate:watch": "tsx scripts/watch-validate.ts"
+    "validate:watch": "tsx scripts/watch-validate.ts",
+    "firebase:emulators": "firebase emulators:start",
+    "firebase:emulators:firestore": "firebase emulators:start --only firestore",
+    "firebase:emulators:auth": "firebase emulators:start --only auth",
+    "firebase:deploy:indexes": "firebase deploy --only firestore:indexes"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "^10.1.0",
