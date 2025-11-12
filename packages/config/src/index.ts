@@ -1,7 +1,15 @@
 import { config } from 'dotenv';
-import { configSchema, type AppConfig } from './schema.js';
+import { configSchema, type AppConfig } from './schema';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-config();
+// Load .env from workspace root
+// This ensures we load from project root regardless of where the service runs
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const workspaceRoot = join(__dirname, '../../..');
+
+config({ path: join(workspaceRoot, '.env') });
 
 let cachedConfig: AppConfig | null = null;
 

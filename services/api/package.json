@@ -16,6 +16,7 @@
     "@fastify/swagger": "^8.10.0",
     "@take-a-break/config": "workspace:*",
     "@take-a-break/firebase": "workspace:*",
+    "@take-a-break/map": "workspace:*",
     "@take-a-break/types": "workspace:*",
     "fastify": "^4.25.2",
     "fastify-plugin": "^4.5.1"

@@ -24,6 +24,7 @@ export function BreakTab() {
   const [generatedPlans, setGeneratedPlans] = useState<BreakPlan[]>([]);
   const [showMapModal, setShowMapModal] = useState(false);
   const [mapLocation, setMapLocation] = useState<{
+    id?: string;
     name: string;
     address: string;
     walkingDistance: number;

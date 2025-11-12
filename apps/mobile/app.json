@@ -16,9 +16,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.takeabreak.app",
+      "bundleIdentifier": "com.ming.takeabreak",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "We use your location to recommend nearby break spots and walking routes."
       }
     },
     "android": {
@@ -26,12 +27,25 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.takeabreak.app"
+      "package": "com.ming.takeabreak",
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [],
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Take a Break to use your location to recommend nearby break spots and walking routes."
+        }
+      ],
+      "./app.plugin.js"
+    ],
     "scheme": "takeabreak",
     "extra": {
       "eas": {

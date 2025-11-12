@@ -8,6 +8,12 @@ export const configSchema = z.object({
   FIREBASE_PRIVATE_KEY: z.string().optional(),
   FIREBASE_DATABASE_URL: z.string().optional(),
   FIREBASE_STORAGE_BUCKET: z.string().optional(),
+  // Google Maps API configuration
+  GOOGLE_MAPS_API_KEY: z.string().optional(),
+  USE_REAL_MAP_API: z
+    .string()
+    .optional()
+    .transform((value) => (value ?? 'false').toLowerCase() === 'true'),
   PUBLIC_FEATURES: z
     .string()
     .default('break-planner,map,voice')

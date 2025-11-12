@@ -1,1 +1,2 @@
-export * from './public.js';
+export * from './public';
+export * from './map';

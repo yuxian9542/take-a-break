@@ -17,6 +17,7 @@ interface BreakPlanModalProps {
   onOpenChange: (open: boolean) => void;
   plans: BreakPlan[];
   onNavigate?: (location: {
+    id?: string;
     name: string;
     address: string;
     walkingDistance: number;
@@ -142,6 +143,7 @@ export function BreakPlanModal({ open, onOpenChange, plans, onNavigate }: BreakP
                               onPress={() => {
                                 if (step.type === 'walk' && step.location && onNavigate) {
                                   const location = {
+                                    id: step.location.id,
                                     name: step.location.name,
                                     address: step.description || step.location.name,
                                     walkingDistance: step.location.walkingDistance,

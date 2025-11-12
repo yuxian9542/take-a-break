@@ -3,6 +3,7 @@ import fastifyCors from '@fastify/cors';
 import fastifyHelmet from '@fastify/helmet';
 import fastifySwagger from '@fastify/swagger';
 import publicRoutes from './routes/public.js';
+import mapRoutes from './routes/map.js';
 import { loadConfig } from '@take-a-break/config';
 import { ensureFirebaseApp } from '@take-a-break/firebase';
 
@@ -32,6 +33,7 @@ export async function buildServer() {
   }
 
   await fastify.register(publicRoutes);
+  await fastify.register(mapRoutes);
 
   ensureFirebaseApp();
 
