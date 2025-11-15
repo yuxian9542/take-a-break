@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections import deque
 from concurrent.futures import Future
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set
@@ -29,4 +30,8 @@ class SessionState:
     background_tasks: Set[asyncio.Task] = field(default_factory=set)
     # WebSocket closed flag to prevent sending messages after disconnect
     is_closed: bool = False
+    # Adaptive threshold detection using 2-second sliding window
+    background_noise_window: deque = field(default_factory=deque)  # 2-second sliding window of amplitude values for noise detection
+    background_noise_level: Optional[float] = None  # Raw background noise level (average amplitude over 2-second window)
+    noise_detection_complete: bool = False  # Whether we've finished collecting background noise (2-second window filled)
 

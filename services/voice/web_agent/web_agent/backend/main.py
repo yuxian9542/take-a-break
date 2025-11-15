@@ -6,6 +6,7 @@ Run with:
 
 from __future__ import annotations
 
+import array
 import asyncio
 import json
 import logging
@@ -19,7 +20,13 @@ from fastapi.middleware.cors import CORSMiddleware
 # Local imports from same directory
 from glm_voice_client import GlmVoiceClient
 import audio_utils
-from config import FRAME_DURATION_MS, SILENCE_THRESHOLD, SAMPLE_RATE
+from config import (
+    FRAME_DURATION_MS, 
+    SILENCE_THRESHOLD, 
+    SAMPLE_RATE,
+    NOISE_THRESHOLD_MULTIPLIER,
+    NOISE_DETECTION_THRESHOLD
+)
 from session_manager import SessionState
 from vad import update_vad_state
 
@@ -71,10 +78,75 @@ async def handle_audio_chunk(
     num_samples = len(pcm_bytes) // 2
     actual_duration_ms = (num_samples / SAMPLE_RATE) * 1000
     
-    logger.info("session=%s chunk size=%d duration=%.1fms", session_id, len(pcm_bytes), actual_duration_ms)
+    # Calculate amplitude for debugging
+    samples = array.array("h")
+    samples.frombytes(pcm_bytes)
+    avg_amp = sum(abs(sample) for sample in samples) / max(1, len(samples))
+    max_amp = max(abs(sample) for sample in samples) if samples else 0
+    
+    # Background noise detection using unified 2-second sliding window
+    # Calculate window size (number of chunks for 2-second window)
+    NOISE_WINDOW_DURATION_MS = 2000  # 2 seconds, same as VAD window
+    noise_window_size = int(NOISE_WINDOW_DURATION_MS / FRAME_DURATION_MS)  # 2000ms / 20ms = 100 chunks
+    
+    # Add current amplitude to background noise window
+    state.background_noise_window.append(avg_amp)
+    
+    # Keep window size limited to 2 seconds
+    while len(state.background_noise_window) > noise_window_size:
+        state.background_noise_window.popleft()
+    
+    # Calculate background noise level from 2-second window average
+    # Only use this if window is full and we haven't detected speech yet
+    if not state.noise_detection_complete:
+        if len(state.background_noise_window) >= noise_window_size:
+            # Window is full - calculate background noise level
+            state.background_noise_level = sum(state.background_noise_window) / len(state.background_noise_window)
+            state.noise_detection_complete = True
+            logger.info("🎯 [BACKGROUND NOISE] session=%s background_noise=%.1f (2-second window, %d chunks)", 
+                       session_id, state.background_noise_level, len(state.background_noise_window))
+        else:
+            # Window not full yet - check if we should stop collecting due to speech
+            # Use conservative threshold to detect speech early
+            if avg_amp >= NOISE_DETECTION_THRESHOLD:
+                # Speech detected during noise collection - use what we have
+                if len(state.background_noise_window) >= 10:  # At least 200ms of samples
+                    state.background_noise_level = sum(state.background_noise_window) / len(state.background_noise_window)
+                    state.noise_detection_complete = True
+                    logger.debug("🎯 [BACKGROUND NOISE] session=%s early speech detected, using %d chunks: background_noise=%.1f", 
+                               session_id, len(state.background_noise_window), state.background_noise_level)
+                else:
+                    # Not enough samples yet - use fallback estimate
+                    state.background_noise_level = SILENCE_THRESHOLD / NOISE_THRESHOLD_MULTIPLIER
+                    state.noise_detection_complete = True
+                    logger.debug("🎯 [BACKGROUND NOISE] session=%s early speech detected but only %d chunks, using fallback: background_noise=%.1f", 
+                               session_id, len(state.background_noise_window), state.background_noise_level)
+    
+    # Update background noise level continuously from the 2-second window (if complete)
+    if state.noise_detection_complete and len(state.background_noise_window) >= noise_window_size:
+        # Recalculate from current window (continuously updated)
+        state.background_noise_level = sum(state.background_noise_window) / len(state.background_noise_window)
+    
+    # Get background noise level for VAD (use estimated if not yet calculated)
+    background_noise_level = state.background_noise_level
+    if background_noise_level is None:
+        # Estimate from fallback threshold (threshold = noise * multiplier, so noise = threshold / multiplier)
+        background_noise_level = SILENCE_THRESHOLD / NOISE_THRESHOLD_MULTIPLIER
+    
+    # Calculate silence threshold for logging (1.5x background noise level)
+    silence_threshold_for_logging = background_noise_level * 1.5
+    logger.debug(
+        "session=%s chunk size=%d duration=%.1fms avg_amp=%.1f max_amp=%d background_noise=%.1f silence_threshold=%.1f (1.5x)", 
+        session_id, len(pcm_bytes), actual_duration_ms, avg_amp, max_amp,
+        background_noise_level, silence_threshold_for_logging
+    )
     
     # Check if speech is starting (transition from not speaking to speaking)
     was_speaking = state.vad_state.in_speech
+    
+    # Capture VAD state before update (so we can log final values if utterance finishes)
+    speech_ms_before = state.vad_state.speech_ms
+    silence_ms_before = state.vad_state.silence_ms
     
     state.pcm_buffer.append(pcm_bytes)
 
@@ -82,22 +154,27 @@ async def handle_audio_chunk(
         state.vad_state,
         pcm_bytes,
         frame_duration_ms=actual_duration_ms,
-        amplitude_threshold=SILENCE_THRESHOLD,
+        background_noise_level=background_noise_level,
+    )
+    
+    # Log VAD state for debugging
+    logger.debug(
+        "session=%s VAD: in_speech=%s speech_ms=%.1f silence_ms=%.1f utterance_finished=%s",
+        session_id, state.vad_state.in_speech, state.vad_state.speech_ms, 
+        state.vad_state.silence_ms, utterance_finished
     )
     
     # Send notification when speech starts
     if not was_speaking and state.vad_state.in_speech:
         speech_start_time = time.time()
-        logger.info("=" * 80)
         logger.info("⏱️ [SPEECH START] session=%s speech started at %.3fs", session_id, speech_start_time)
-        logger.info("=" * 80)
         await send_json_safe(websocket, {
             "type": "speech_started",
             "message": "Listening..."
         })
 
     if not utterance_finished:
-        logger.info("session=%s awaiting more audio (buffer=%d chunks)", session_id, len(state.pcm_buffer))
+        logger.debug("session=%s awaiting more audio (buffer=%d chunks)", session_id, len(state.pcm_buffer))
         return
 
     if not state.pcm_buffer:
@@ -106,14 +183,30 @@ async def handle_audio_chunk(
     
     # VAD detected end of utterance - log timing
     vad_complete_time = time.time()
-    logger.info("=" * 80)
-    logger.info("⏱️ [VAD COMPLETE] session=%s VAD detected utterance end at %.3fs", session_id, vad_complete_time)
-    logger.info("=" * 80)
+    logger.info("⏱️ [VAD COMPLETE] session=%s VAD detected utterance end at %.3fs (speech_ms=%.1f, silence_ms=%.1f)", 
+                session_id, vad_complete_time, speech_ms_before, silence_ms_before)
     
     # Process the complete utterance FIRST (before any async operations)
     pcm_payload = audio_utils.concat_pcm16(state.pcm_buffer)
     state.pcm_buffer.clear()
-    logger.info("⏱️ session=%s utterance processed, PCM length=%d", session_id, len(pcm_payload))
+    logger.debug("⏱️ session=%s utterance processed, PCM length=%d", session_id, len(pcm_payload))
+
+    # Check minimum audio length (at least 200ms) before attempting transcription
+    # PCM16: 2 bytes per sample, 16kHz sample rate
+    num_samples = len(pcm_payload) // 2
+    audio_duration_ms = (num_samples / SAMPLE_RATE) * 1000
+    MIN_AUDIO_DURATION_MS = 200  # 200ms minimum
+    
+    if audio_duration_ms < MIN_AUDIO_DURATION_MS:
+        logger.warning(
+            "session=%s audio too short (%.1fms < %dms), skipping transcription",
+            session_id, audio_duration_ms, MIN_AUDIO_DURATION_MS
+        )
+        await send_json_safe(websocket, {
+            "type": "error",
+            "message": "Audio too short. Please speak longer."
+        })
+        return
 
     # Convert audio for ASR and GLM
     user_wav = audio_utils.pcm16_to_wav_bytes(pcm_payload)
@@ -287,6 +380,8 @@ async def handle_control_message(
 
 @app.websocket("/ws/voice")
 async def websocket_endpoint(websocket: WebSocket) -> None:
+    # Accept WebSocket connection from any origin
+    # CORS middleware doesn't apply to WebSocket, so we need to accept explicitly
     await websocket.accept()
     session_id = str(uuid.uuid4())
     state = get_session(session_id)

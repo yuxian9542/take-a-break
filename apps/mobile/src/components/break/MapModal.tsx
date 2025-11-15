@@ -28,6 +28,7 @@ import { mapService } from '../../services/mapService';
 import type { LocationState, NearbyPlace, RouteResponse } from '../../services/mapService';
 import { startNavigation } from '../../utils/navigation';
 import { useNavigationSession } from '../../hooks/useNavigationSession';
+import { VoiceChatModal } from './VoiceChatModal';
 
 const FALLBACK_REGION: Region = {
   latitude: 40.7829,
@@ -72,9 +73,9 @@ export function MapModal({
   voiceCompanionActive = false,
   isListening = false,
   isSpeaking = false,
-  onListeningChange
+  onListeningChange,
+  onSpeakingChange
 }: MapModalProps) {
-  const [localIsListening, setLocalIsListening] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<LocationState | null>(null);
   const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([]);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
@@ -203,9 +204,11 @@ export function MapModal({
     setIsLoadingMap(true);
     setErrorMessage(null);
     try {
+      // Add timeout to prevent hanging (10 seconds)
       const current = await mapService.getCurrentLocation({
         mode: 'highAccuracy',
-        allowStale: false
+        allowStale: false,
+        timeoutMs: 10000 // 10 second timeout
       });
       if (!isMountedRef.current) return;
       setCurrentLocation(current);
@@ -335,12 +338,6 @@ export function MapModal({
 
   const handleToggleVoiceCompanion = () => {
     onOpenVoice?.();
-  };
-
-  const handleToggleMic = () => {
-    const newListeningState = !localIsListening;
-    setLocalIsListening(newListeningState);
-    onListeningChange?.(newListeningState);
   };
 
   const handleSelectPlace = (placeId: string) => {
@@ -711,68 +708,19 @@ export function MapModal({
             </View>
           </View>
 
-          {showVoiceModal && (
-            <View style={styles.voiceModalOverlay}>
-              <View style={styles.voiceModalContent}>
-                <LinearGradient colors={['#f0fdf4', '#ecfdf5']} style={styles.voiceModalGradient}>
-                  <View style={styles.voiceModalHeader}>
-                    <Text style={styles.voiceModalTitle}>Voice Chat</Text>
-                    <TouchableOpacity onPress={() => onCloseVoice?.()}>
-                      <X size={20} color="#134e4a" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={styles.voiceModalBody}>
-                    <TouchableOpacity
-                      onPress={handleToggleMic}
-                      style={[
-                        styles.voiceModalMicButton,
-                        localIsListening && styles.voiceModalMicButtonActive
-                      ]}
-                      activeOpacity={0.8}
-                    >
-                      {localIsListening ? (
-                        <Mic size={64} color="#134e4a" />
-                      ) : (
-                        <MicOff size={64} color="#9ca3af" />
-                      )}
-                    </TouchableOpacity>
-
-                    <View style={styles.voiceModalInstructions}>
-                      <Text style={styles.voiceModalInstructionText}>
-                        {localIsListening ? "I'm listening..." : 'Tap to speak'}
-                      </Text>
-                      <Text style={styles.voiceModalSubInstruction}>
-                        {localIsListening
-                          ? "Share what's on your mind"
-                          : "Start talking about how you're feeling"}
-                      </Text>
-                    </View>
-
-                    <View style={styles.voiceModalConversationBox}>
-                      <Text style={styles.voiceModalConversationPlaceholder}>
-                        {localIsListening
-                          ? 'Listening to your voice...'
-                          : 'Your conversation will appear here'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.voiceModalFooter}>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setLocalIsListening(false);
-                        onCloseVoice?.();
-                      }}
-                      style={styles.voiceModalContinueButton}
-                    >
-                      <Text style={styles.voiceModalContinueButtonText}>Continue</Text>
-                    </TouchableOpacity>
-                  </View>
-                </LinearGradient>
-              </View>
-            </View>
-          )}
+          {/* Voice Chat Modal */}
+          <VoiceChatModal
+            open={showVoiceModal}
+            onOpenChange={(open) => {
+              if (!open) {
+                onCloseVoice?.();
+              }
+            }}
+            sessionTopic="break_companion"
+            showContinueButton={false}
+            onListeningChange={onListeningChange}
+            onSpeakingChange={onSpeakingChange}
+          />
         </View>
       </Modal>
     </>

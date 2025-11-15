@@ -19,5 +19,6 @@ fi
 echo "🚀 Starting backend server..."
 source venv/bin/activate
 cd backend
-python -m uvicorn main:app --reload --port 8000 --log-level info
+export PYTHONPATH="${SCRIPT_DIR}/backend:${PYTHONPATH}"
+python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000 --log-level info
 

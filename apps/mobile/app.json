@@ -19,7 +19,8 @@
       "bundleIdentifier": "com.ming.takeabreak",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSLocationWhenInUseUsageDescription": "We use your location to recommend nearby break spots and walking routes."
+        "NSLocationWhenInUseUsageDescription": "We use your location to recommend nearby break spots and walking routes.",
+        "NSMicrophoneUsageDescription": "We use your microphone for voice chat to help you relax and take a break."
       }
     },
     "android": {
@@ -28,6 +29,11 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.ming.takeabreak",
+      "permissions": [
+        "RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
       "config": {
         "googleMaps": {
           "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
@@ -49,8 +55,9 @@
     "scheme": "takeabreak",
     "extra": {
       "eas": {
-        "projectId": "19a2f2ca-7f05-4f22-aa4e-44323551a539"
+        "projectId": "62b775c3-ce76-4006-b4b0-58c6551ef7f2"
       }
-    }
+    },
+    "owner": "smartzdp"
   }
 }
