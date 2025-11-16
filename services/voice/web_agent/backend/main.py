@@ -137,28 +137,36 @@ async def handle_audio_chunk(
     # Launch everything in a background task so audio handler can return immediately
     # This allows new audio chunks to be processed for next utterance while we handle this one
     async def process_utterance_async():
-        
-        # Start background ASR transcription for current question (for UI display and history)
-        async def transcribe_current():
-            loop = asyncio.get_event_loop()
-            transcript = await loop.run_in_executor(
-                None,
-                lambda: glm_client.transcribe_audio(audio_b64, state.language)
-            )
-            if transcript:
-                asr_complete_time = time.time()
-                logger.info("=" * 80)
-                logger.info("⏱️ [ASR COMPLETE] session=%s at %.3fs - Transcript: %s", session_id, asr_complete_time, transcript)
-                logger.info("=" * 80)
-                # Save transcript for history
-                state.pending_user_transcript = transcript
-                # Send to frontend
-                await send_json_safe(websocket, {"type": "asr_complete", "text": transcript})
-        
-        asyncio.create_task(transcribe_current())
-        
-        # Start GLM processing
-        await process_glm_request(websocket, session_id, state, audio_b64)
+        try:
+            # Start background ASR transcription for current question (for UI display and history)
+            async def transcribe_current():
+                try:
+                    loop = asyncio.get_event_loop()
+                    transcript = await loop.run_in_executor(
+                        None,
+                        lambda: glm_client.transcribe_audio(audio_b64, state.language)
+                    )
+                    if transcript:
+                        asr_complete_time = time.time()
+                        logger.info("=" * 80)
+                        logger.info("⏱️ [ASR COMPLETE] session=%s at %.3fs - Transcript: %s", session_id, asr_complete_time, transcript)
+                        logger.info("=" * 80)
+                        # Save transcript for history
+                        state.pending_user_transcript = transcript
+                        # Send to frontend
+                        await send_json_safe(websocket, {"type": "asr_complete", "text": transcript})
+                except Exception as e:
+                    # Log but don't fail the whole process if transcription fails
+                    logger.warning("⏱️ [ASR ERROR] session=%s - Transcription failed: %s", session_id, e)
+            
+            asyncio.create_task(transcribe_current())
+            
+            # Start GLM processing
+            await process_glm_request(websocket, session_id, state, audio_b64)
+        except Exception as e:
+            # Catch any unexpected errors in the async processing
+            error_type = type(e).__name__
+            logger.exception("⏱️ [PROCESS ERROR] session=%s - Error in process_utterance_async: %s", session_id, error_type)
     
     # Launch the processing task and return immediately so audio handler doesn't block
     asyncio.create_task(process_utterance_async())
@@ -181,87 +189,108 @@ async def process_glm_request(websocket, session_id, state, audio_b64):
     chunk_idx = 0
     first_chunk_received = False
     
-    stream_gen = glm_client.chat_stream(
-        audio_b64=audio_b64,
-        history_text=state.history_text if state.history_text else None,
-        language=state.language,
-    )
-    
-    # Iterate through streaming results
-    for stream_item in stream_gen:
-        # Store the ASR future on first iteration for cleanup on disconnect
-        if not state.asr_future and hasattr(glm_client, '_last_transcript_future'):
-            state.asr_future = glm_client._last_transcript_future
+    try:
+        stream_gen = glm_client.chat_stream(
+            audio_b64=audio_b64,
+            history_text=state.history_text if state.history_text else None,
+            language=state.language,
+        )
         
-        item_type = stream_item.get('type')
-        
-        if item_type == 'audio_chunk':
-            audio_chunk = stream_item.get('data')
-            if audio_chunk:
-                if not first_chunk_received:
-                    ttfb = time.time() - start_time
+        # Iterate through streaming results
+        for stream_item in stream_gen:
+            # Store the ASR future on first iteration for cleanup on disconnect
+            if not state.asr_future and hasattr(glm_client, '_last_transcript_future'):
+                state.asr_future = glm_client._last_transcript_future
+            
+            item_type = stream_item.get('type')
+            
+            if item_type == 'audio_chunk':
+                audio_chunk = stream_item.get('data')
+                if audio_chunk:
+                    if not first_chunk_received:
+                        ttfb = time.time() - start_time
+                        logger.info("=" * 80)
+                        logger.info("⏱️ [AUDIO FIRST CHUNK] session=%s TTFB: %.3f seconds", session_id, ttfb)
+                        logger.info("=" * 80)
+                        first_chunk_received = True
+                    
+                    await send_json_safe(websocket, {
+                        "type": "reply_audio_chunk",
+                        "data": audio_utils.bytes_to_b64(audio_chunk),
+                        "isLast": False,
+                    })
+                    chunk_idx += 1
+            
+            elif item_type == 'text':
+                assistant_text = stream_item.get('content')
+                if assistant_text:
+                    assistant_text_parts.append(assistant_text)
+                    glm_complete_time = time.time()
                     logger.info("=" * 80)
-                    logger.info("⏱️ [AUDIO FIRST CHUNK] session=%s TTFB: %.3f seconds", session_id, ttfb)
+                    logger.info("⏱️ [GLM COMPLETE] session=%s at %.3fs - Response: %s", session_id, glm_complete_time, assistant_text)
                     logger.info("=" * 80)
-                    first_chunk_received = True
-                
+                    await send_json_safe(websocket, {"type": "glm_complete", "text": assistant_text})
+            
+            elif item_type == 'done':
+                stream_end_time = time.time()
+                logger.info("=" * 80)
+                logger.info("⏱️ [AUDIO STREAM END] session=%s at %.3fs - Total chunks: %d", session_id, stream_end_time, chunk_idx)
+                logger.info("=" * 80)
                 await send_json_safe(websocket, {
                     "type": "reply_audio_chunk",
-                    "data": audio_utils.bytes_to_b64(audio_chunk),
-                    "isLast": False,
+                    "data": "",
+                    "isLast": True,
                 })
-                chunk_idx += 1
-        
-        elif item_type == 'text':
-            assistant_text = stream_item.get('content')
-            if assistant_text:
-                assistant_text_parts.append(assistant_text)
-                glm_complete_time = time.time()
-                logger.info("=" * 80)
-                logger.info("⏱️ [GLM COMPLETE] session=%s at %.3fs - Response: %s", session_id, glm_complete_time, assistant_text)
-                logger.info("=" * 80)
-                await send_json_safe(websocket, {"type": "glm_complete", "text": assistant_text})
-        
-        elif item_type == 'done':
-            stream_end_time = time.time()
-            logger.info("=" * 80)
-            logger.info("⏱️ [AUDIO STREAM END] session=%s at %.3fs - Total chunks: %d", session_id, stream_end_time, chunk_idx)
-            logger.info("=" * 80)
-            await send_json_safe(websocket, {
-                "type": "reply_audio_chunk",
-                "data": "",
-                "isLast": True,
-            })
-            state.pending_assistant_text = "".join(assistant_text_parts) if assistant_text_parts else "[audio reply]"
-            
-            # Update history with user transcript (from Whisper) and assistant response
-            # Run in background with timeout - if Whisper not ready in 3s, use placeholder
-            async def update_history_async():
-                # Wait up to 3 seconds for Whisper transcript
-                for _ in range(30):  # 30 * 0.1s = 3s
-                    if state.pending_user_transcript:
-                        break
-                    await asyncio.sleep(0.1)
+                state.pending_assistant_text = "".join(assistant_text_parts) if assistant_text_parts else "[audio reply]"
                 
-                # Use transcript if available, otherwise placeholder
-                user_text = state.pending_user_transcript if state.pending_user_transcript else "[audio input]"
-                
-                if state.pending_assistant_text:
-                    if state.history_text:
-                        state.history_text += f"\nUser: {user_text}\nAssistant: {state.pending_assistant_text}"
-                    else:
-                        state.history_text = f"User: {user_text}\nAssistant: {state.pending_assistant_text}"
-                    logger.info("=" * 80)
-                    logger.info("📝 [HISTORY UPDATED] session=%s - %d chars", session_id, len(state.history_text))
-                    logger.info("New history:\n%s", state.history_text)
-                    logger.info("=" * 80)
+                # Update history with user transcript (from Whisper) and assistant response
+                # Run in background with timeout - if Whisper not ready in 3s, use placeholder
+                async def update_history_async():
+                    # Wait up to 3 seconds for Whisper transcript
+                    for _ in range(30):  # 30 * 0.1s = 3s
+                        if state.pending_user_transcript:
+                            break
+                        await asyncio.sleep(0.1)
                     
-                    # Clear pending texts for next turn
-                    state.pending_user_transcript = None
-                    state.pending_assistant_text = None
-            
-            # Fire and forget - don't block the stream completion
-            asyncio.create_task(update_history_async())
+                    # Use transcript if available, otherwise placeholder
+                    user_text = state.pending_user_transcript if state.pending_user_transcript else "[audio input]"
+                    
+                    if state.pending_assistant_text:
+                        if state.history_text:
+                            state.history_text += f"\nUser: {user_text}\nAssistant: {state.pending_assistant_text}"
+                        else:
+                            state.history_text = f"User: {user_text}\nAssistant: {state.pending_assistant_text}"
+                        logger.info("=" * 80)
+                        logger.info("📝 [HISTORY UPDATED] session=%s - %d chars", session_id, len(state.history_text))
+                        logger.info("New history:\n%s", state.history_text)
+                        logger.info("=" * 80)
+                        
+                        # Clear pending texts for next turn
+                        state.pending_user_transcript = None
+                        state.pending_assistant_text = None
+                
+                # Fire and forget - don't block the stream completion
+                asyncio.create_task(update_history_async())
+    
+    except Exception as e:
+        # Handle stream interruptions gracefully (e.g., when user stops chat)
+        error_type = type(e).__name__
+        if "RemoteProtocolError" in error_type or "ConnectionClosed" in error_type or "IncompleteRead" in error_type:
+            logger.info("⏱️ [STREAM INTERRUPTED] session=%s - Connection closed by client: %s", session_id, error_type)
+        else:
+            logger.exception("⏱️ [STREAM ERROR] session=%s - Unexpected error during streaming", session_id)
+        
+        # Ensure we mark the stream as done even if interrupted
+        try:
+            if websocket.client_state.name == "CONNECTED":
+                await send_json_safe(websocket, {
+                    "type": "reply_audio_chunk",
+                    "data": "",
+                    "isLast": True,
+                })
+        except Exception:
+            # WebSocket might already be closed, ignore
+            pass
 
 
 async def handle_control_message(

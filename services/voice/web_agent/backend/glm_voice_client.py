@@ -11,6 +11,8 @@ from zhipuai import ZhipuAI
 import whisper
 import torch
 
+from config import MILO_HEADER_SYSTEM_PROMPT
+
 
 logger = logging.getLogger(__name__)
 
@@ -150,44 +152,38 @@ class GlmVoiceClient:
         # Build messages with system prompt for history
         messages: List[Dict] = []
         
-        # Add role-based system prompt if provided
-        if system_prompt:
-            logger.info("Using role-based system prompt")
-            messages.append({
-                "role": "system",
-                "content": system_prompt
-            })
+        # Build the complete system prompt: header first, then chat history
+        system_prompt_parts = [MILO_HEADER_SYSTEM_PROMPT]
         
+        # Add role-based system prompt if provided (for backward compatibility)
+        if system_prompt:
+            logger.info("Using additional role-based system prompt")
+            system_prompt_parts.append(system_prompt)
+        
+        # Add conversation history if it exists
         if history_text:
-            # Multi-turn: add system message with conversation history
             logger.info("Adding conversation history to system prompt")
-            messages.append({
-                "role": "system",
-                "content": f"Previous conversation:\n{history_text}"
-            })
-            
-            # Add current user audio message
-            messages.append({
-                "role": "user",
-                "content": [
-                    {
-                        "type": "input_audio",
-                        "input_audio": {"data": audio_b64, "format": "wav"},
-                    }
-                ],
-            })
-        else:
-            # First turn: audio only (no transcript needed)
-            logger.info("First turn - audio only, no history")
-            messages.append({
-                "role": "user",
-                "content": [
-                    {
-                        "type": "input_audio",
-                        "input_audio": {"data": audio_b64, "format": "wav"},
-                    }
-                ],
-            })
+            system_prompt_parts.append(f"Previous conversation:\n{history_text}")
+        
+        # Combine all system prompt parts with double newlines between sections
+        complete_system_prompt = "\n\n".join(system_prompt_parts)
+        
+        # Add the system message with header and history
+        messages.append({
+            "role": "system",
+            "content": complete_system_prompt
+        })
+        
+        # Add current user audio message
+        messages.append({
+            "role": "user",
+            "content": [
+                {
+                    "type": "input_audio",
+                    "input_audio": {"data": audio_b64, "format": "wav"},
+                }
+            ],
+        })
         logger.info("Sending %d messages to GLM-4-Voice", len(messages))
 
         import time
@@ -215,42 +211,52 @@ class GlmVoiceClient:
         
         logger.debug("Waiting for first chunk from GLM-4-Voice...")
         
-        for chunk in stream:
-            if first_chunk_time is None:
-                first_chunk_time = time.time() - request_start
-                logger.info("FIRST CHUNK received in %.2fs (TTFB)", first_chunk_time)
-            
-            chunk_count += 1
-            
-            if not chunk.choices:
-                continue
+        try:
+            for chunk in stream:
+                if first_chunk_time is None:
+                    first_chunk_time = time.time() - request_start
+                    logger.info("FIRST CHUNK received in %.2fs (TTFB)", first_chunk_time)
                 
-            delta = chunk.choices[0].delta
-            
-            # Extract audio chunk
-            if hasattr(delta, "audio") and delta.audio:
-                audio_payload = delta.audio
-                # Access attributes directly (not dict methods)
-                audio_data = getattr(audio_payload, "data", None)
-                current_audio_id = getattr(audio_payload, "id", None)
+                chunk_count += 1
                 
-                if current_audio_id:
-                    audio_id = current_audio_id
+                if not chunk.choices:
+                    continue
+                    
+                delta = chunk.choices[0].delta
                 
-                if audio_data:
-                    audio_bytes = base64.b64decode(audio_data)
-                    logger.debug("Audio chunk #%d: %d bytes", chunk_count, len(audio_bytes))
-                    yield {
-                        'type': 'audio_chunk',
-                        'data': audio_bytes,
-                        'audio_id': audio_id
-                    }
-            
-            # Extract text content
-            if hasattr(delta, "content") and delta.content:
-                text_part = delta.content
-                if isinstance(text_part, str) and text_part.strip():
-                    assistant_text_parts.append(text_part)
+                # Extract audio chunk
+                if hasattr(delta, "audio") and delta.audio:
+                    audio_payload = delta.audio
+                    # Access attributes directly (not dict methods)
+                    audio_data = getattr(audio_payload, "data", None)
+                    current_audio_id = getattr(audio_payload, "id", None)
+                    
+                    if current_audio_id:
+                        audio_id = current_audio_id
+                    
+                    if audio_data:
+                        audio_bytes = base64.b64decode(audio_data)
+                        logger.debug("Audio chunk #%d: %d bytes", chunk_count, len(audio_bytes))
+                        yield {
+                            'type': 'audio_chunk',
+                            'data': audio_bytes,
+                            'audio_id': audio_id
+                        }
+                
+                # Extract text content
+                if hasattr(delta, "content") and delta.content:
+                    text_part = delta.content
+                    if isinstance(text_part, str) and text_part.strip():
+                        assistant_text_parts.append(text_part)
+        
+        except (Exception, KeyboardInterrupt) as e:
+            # Handle stream interruptions gracefully
+            error_type = type(e).__name__
+            if "RemoteProtocolError" in error_type or "ConnectionClosed" in error_type or "IncompleteRead" in error_type:
+                logger.info("Stream interrupted: connection closed by peer (%s)", error_type)
+            else:
+                logger.warning("Stream interrupted: %s", error_type)
+            # Don't re-raise, just exit the loop and yield what we have
         
         # Combine all text parts
         assistant_text = "".join(assistant_text_parts).strip() if assistant_text_parts else None
