@@ -1,0 +1,9 @@
+{
+  "name": "@take-a-break/break-plans",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts"
+}
+

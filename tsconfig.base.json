@@ -1,25 +1,14 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true,
-    "allowSyntheticDefaultImports": true,
-    "sourceMap": true,
     "baseUrl": ".",
     "paths": {
-      "@take-a-break/config": ["packages/config/src/index.ts"],
-      "@take-a-break/firebase": ["infra/firebase/src/index.ts"],
-      "@take-a-break/types": ["packages/types/src/index.ts"],
-      "@take-a-break/types/*": ["packages/types/src/*"],
-      "@take-a-break/map": ["services/map/src/index.ts"],
-      "@take-a-break/api-client": ["packages/api-client/src/index.ts"]
+      "@take-a-break/break-plans": ["packages/break-plans/src/index.ts"]
     }
   },
-  "include": ["packages", "services", "infra"]
+  "include": ["packages"]
 }

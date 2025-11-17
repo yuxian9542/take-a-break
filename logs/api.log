@@ -1,0 +1,18 @@
+
+> @take-a-break/api@0.1.0 dev /Users/ming/Documents/take-a-break/services/api
+> tsx watch src/server.ts
+
+[MapService] Using mock places data
+[MapService] Using heuristic routing
+{"level":30,"time":1763343141463,"pid":53726,"hostname":"ChendeMac-mini.local","msg":"Server listening at http://0.0.0.0:3333"}
+{"level":30,"time":1763343141463,"pid":53726,"hostname":"ChendeMac-mini.local","msg":"API listening on http://0.0.0.0:3333"}
+{"level":30,"time":1763343142452,"pid":53726,"hostname":"ChendeMac-mini.local","reqId":"req-1","req":{"method":"GET","url":"/","hostname":"localhost:3333","remoteAddress":"127.0.0.1","remotePort":57556},"msg":"incoming request"}
+{"level":30,"time":1763343142454,"pid":53726,"hostname":"ChendeMac-mini.local","reqId":"req-1","msg":"Route GET:/ not found"}
+{"level":30,"time":1763343142456,"pid":53726,"hostname":"ChendeMac-mini.local","reqId":"req-1","res":{"statusCode":404},"responseTime":3.7345419973134995,"msg":"request completed"}
+{"level":30,"time":1763343160698,"pid":53726,"hostname":"ChendeMac-mini.local","reqId":"req-2","req":{"method":"GET","url":"/api/health","hostname":"localhost:3333","remoteAddress":"127.0.0.1","remotePort":57731},"msg":"incoming request"}
+{"level":30,"time":1763343160714,"pid":53726,"hostname":"ChendeMac-mini.local","reqId":"req-2","msg":"Route GET:/api/health not found"}
+{"level":30,"time":1763343160719,"pid":53726,"hostname":"ChendeMac-mini.local","reqId":"req-2","res":{"statusCode":404},"responseTime":16.884708996862173,"msg":"request completed"}
+8:35:05 PM [tsx] Previous process hasn't exited yet. Force killing...
+/Users/ming/Documents/take-a-break/services/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @take-a-break/api@0.1.0 dev: `tsx watch src/server.ts`
+Exit status 130

@@ -40,7 +40,8 @@ export class HttpClient {
 
     this.baseUrl = trimmed;
     this.defaultHeaders = config.defaultHeaders ?? {};
-    this.fetchFn = config.fetchFn ?? globalThis.fetch;
+    // Bind fetch to preserve 'this' context in browser environments
+    this.fetchFn = config.fetchFn ?? globalThis.fetch.bind(globalThis);
 
     if (typeof this.fetchFn !== 'function') {
       throw new Error('Fetch function is not available in this environment');

@@ -20,5 +20,9 @@
     "@take-a-break/types": "workspace:*",
     "fastify": "^4.25.2",
     "fastify-plugin": "^4.5.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
   }
 }

@@ -1,0 +1,28 @@
+{"level":"info","ts":1763343154.6957178,"msg":"maxprocs: Leaving GOMAXPROCS=8: CPU quota undefined"}
+{"level":"info","ts":1763343154.69584,"msg":"GOMEMLIMIT is updated","package":"github.com/KimMachineGun/automemlimit/memlimit","GOMEMLIMIT":7730941132,"previous":9223372036854775807}
+{"level":"info","ts":1763343154.696188,"msg":"using config from file","file":"Caddyfile"}
+{"level":"warn","ts":1763343154.6978948,"logger":"caddyfile","msg":"Site block has an unspecified IP address which only matches requests having that Host header; you probably want the 'bind' directive to configure the socket","address":"0.0.0.0"}
+{"level":"info","ts":1763343154.698495,"msg":"adapted config to JSON","adapter":"caddyfile"}
+{"level":"warn","ts":1763343154.6985018,"msg":"Caddyfile input is not formatted; run 'caddy fmt --overwrite' to fix inconsistencies","adapter":"caddyfile","file":"Caddyfile","line":33}
+{"level":"info","ts":1763343154.7005272,"logger":"admin","msg":"admin endpoint started","address":"localhost:2019","enforce_origin":false,"origins":["//localhost:2019","//[::1]:2019","//127.0.0.1:2019"]}
+{"level":"info","ts":1763343154.701045,"logger":"http.auto_https","msg":"enabling automatic HTTP->HTTPS redirects","server_name":"srv0"}
+{"level":"info","ts":1763343154.7014022,"logger":"tls.cache.maintenance","msg":"started background certificate maintenance","cache":"0x14000531580"}
+{"level":"info","ts":1763343154.705214,"logger":"http","msg":"enabling HTTP/3 listener","addr":":8080"}
+{"level":"info","ts":1763343154.706205,"logger":"http.log","msg":"server running","name":"srv0","protocols":["h1","h2","h3"]}
+{"level":"warn","ts":1763343154.706246,"logger":"http","msg":"HTTP/2 skipped because it requires TLS","network":"tcp","addr":":80"}
+{"level":"warn","ts":1763343154.70625,"logger":"http","msg":"HTTP/3 skipped because it requires TLS","network":"tcp","addr":":80"}
+{"level":"info","ts":1763343154.706253,"logger":"http.log","msg":"server running","name":"remaining_auto_https_redirects","protocols":["h1","h2","h3"]}
+{"level":"info","ts":1763343154.706256,"logger":"http","msg":"enabling automatic TLS certificate management","domains":["0.0.0.0"]}
+{"level":"warn","ts":1763343154.707075,"logger":"tls","msg":"stapling OCSP","identifiers":["0.0.0.0"]}
+{"level":"info","ts":1763343154.71347,"logger":"tls","msg":"storage cleaning happened too recently; skipping for now","storage":"FileStorage:/Users/ming/Library/Application Support/Caddy","instance":"f3816b34-a01c-4e93-a764-3e57a242d205","try_again":1763429554.713469,"try_again_in":86399.999999625}
+{"level":"info","ts":1763343154.713592,"logger":"tls","msg":"finished cleaning storage units"}
+{"level":"warn","ts":1763343154.727094,"logger":"pki.ca.local","msg":"installing root certificate (you might be prompted for password)","path":"storage:pki/authorities/local/root.crt"}
+{"level":"info","ts":1763343154.826556,"msg":"warning: \"certutil\" is not available, install \"certutil\" with \"brew install nss\" and try again"}
+{"level":"info","ts":1763343154.826575,"msg":"define JAVA_HOME environment variable to use the Java trust"}
+{"level":"info","ts":1763343305.367323,"msg":"shutting down","signal":"SIGINT"}
+{"level":"warn","ts":1763343305.368486,"msg":"exiting; byeee!! 👋","signal":"SIGINT"}
+{"level":"error","ts":1763343305.3722339,"logger":"pki.ca.local","msg":"failed to install root certificate","error":"failed to execute sudo: exit status 1","certificate_file":"storage:pki/authorities/local/root.crt"}
+{"level":"info","ts":1763343305.384293,"msg":"autosaved config (load with --resume flag)","file":"/Users/ming/Library/Application Support/Caddy/autosave.json"}
+{"level":"info","ts":1763343305.384316,"msg":"serving initial configuration"}
+{"level":"info","ts":1763343305.384515,"logger":"admin","msg":"stopped previous server","address":"localhost:2019"}
+{"level":"info","ts":1763343305.38456,"msg":"shutdown complete","signal":"SIGINT","exit_code":0}

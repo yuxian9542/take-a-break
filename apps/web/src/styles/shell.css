@@ -1,0 +1,188 @@
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 45%, #d1fae5 100%);
+}
+
+.shell-sidebar {
+  width: 280px;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: rgba(255, 255, 255, 0.55);
+  border-right: 1px solid rgba(16, 185, 129, 0.15);
+  backdrop-filter: blur(12px);
+}
+
+.shell-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shell-brand h1 {
+  font-size: 1.5rem;
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.shell-brand p {
+  margin: 0;
+  color: #0f766e;
+  font-weight: 500;
+}
+
+.shell-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shell-nav a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  color: #0f172a;
+  font-weight: 500;
+  border: 1px solid transparent;
+  transition: background 0.2s ease, border 0.2s ease;
+}
+
+.shell-nav a .nav-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.shell-nav a .nav-meta span:first-child {
+  font-size: 0.95rem;
+}
+
+.shell-nav a .nav-meta span:last-child {
+  font-size: 0.8rem;
+  color: #475569;
+  font-weight: 400;
+}
+
+.shell-nav a:hover {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.18);
+}
+
+.shell-nav a.active {
+  background: #0f766e;
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 10px 30px rgba(15, 118, 110, 0.25);
+}
+
+.shell-nav a.active .nav-meta span:last-child {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.shell-sidebar-footer {
+  margin-top: auto;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #0f172a;
+}
+
+.shell-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 32px 40px;
+}
+
+.shell-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.shell-topbar h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.shell-topbar p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.shell-topbar .topbar-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.12);
+  color: #0369a1;
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.shell-main {
+  flex: 1;
+  padding-top: 32px;
+  padding-bottom: 40px;
+}
+
+@media (max-width: 1024px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .shell-sidebar {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .shell-brand {
+    width: 100%;
+  }
+
+  .shell-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .shell-nav a {
+    flex: 1 1 calc(33.333% - 12px);
+  }
+
+  .shell-sidebar-footer {
+    width: 100%;
+  }
+
+  .shell-content {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .shell-nav a {
+    flex: 1 1 100%;
+  }
+
+  .shell-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

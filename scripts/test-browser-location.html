@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Status Test - Take a Break</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%);
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #0f766e;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #64748b;
+            margin-bottom: 30px;
+        }
+        .status-box {
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 2px solid #e2e8f0;
+        }
+        .status-box.idle {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+        .status-box.loading {
+            background: #fef3c7;
+            border-color: #fcd34d;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        .status-box.granted {
+            background: #d1fae5;
+            border-color: #10b981;
+        }
+        .status-box.denied, .status-box.error {
+            background: #fee2e2;
+            border-color: #ef4444;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .status-label {
+            font-size: 14px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .status-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+        .location-details {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .location-details div {
+            margin: 5px 0;
+        }
+        .btn {
+            background: #0f766e;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background: #115e59;
+        }
+        .btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+        .info-section {
+            background: #eff6ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            border-left: 4px solid #3b82f6;
+        }
+        .info-section h3 {
+            margin-top: 0;
+            color: #1e40af;
+        }
+        .test-results {
+            margin-top: 20px;
+        }
+        .test-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            background: #f8fafc;
+        }
+        .test-item.pass {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .test-item.fail {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .map-preview {
+            margin-top: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .error-message {
+            color: #dc2626;
+            margin-top: 10px;
+            padding: 10px;
+            background: #fef2f2;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📍 Location Status Test</h1>
+        <p class="subtitle">Testing "Getting location..." functionality</p>
+        
+        <div id="statusBox" class="status-box idle">
+            <div class="status-label">Location Status</div>
+            <div class="status-value" id="statusText">Initializing...</div>
+            <div id="statusInfo" style="color: #64748b; font-size: 14px;"></div>
+            
+            <div id="locationDetails" class="location-details" style="display: none;">
+                <div><strong>Coordinates:</strong> <span id="coords">-</span></div>
+                <div><strong>Accuracy:</strong> <span id="accuracy">-</span></div>
+                <div><strong>Timestamp:</strong> <span id="timestamp">-</span></div>
+                <div><strong>Mode:</strong> <span id="mode">-</span></div>
+            </div>
+            
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+        </div>
+        
+        <button id="retryBtn" class="btn" onclick="requestLocation()">
+            🔄 Retry Location
+        </button>
+        
+        <button class="btn" onclick="checkPermissions()" style="margin-left: 10px; background: #3b82f6;">
+            🔐 Check Permissions
+        </button>
+        
+        <button class="btn" onclick="openSettings()" style="margin-left: 10px; background: #8b5cf6;">
+            ⚙️ Open Settings Help
+        </button>
+        
+        <div id="mapPreview" class="map-preview" style="display: none;">
+            <iframe 
+                id="mapFrame"
+                width="100%" 
+                height="300"
+                frameborder="0" 
+                style="border:0"
+                loading="lazy">
+            </iframe>
+        </div>
+        
+        <div class="test-results" id="testResults"></div>
+        
+        <div class="info-section">
+            <h3>ℹ️ Test Information</h3>
+            <p><strong>What this tests:</strong></p>
+            <ul>
+                <li>Browser Geolocation API availability</li>
+                <li>Permission request and handling</li>
+                <li>Real-time location acquisition</li>
+                <li>Status transitions (idle → loading → granted/denied/error)</li>
+                <li>Error handling for different scenarios</li>
+            </ul>
+            <p><strong>Expected behavior:</strong></p>
+            <ol>
+                <li>Status starts as "Initializing..."</li>
+                <li>Changes to "Getting location..." when requesting</li>
+                <li>Browser shows permission prompt</li>
+                <li>If granted: Shows "Live location active" with your coordinates</li>
+                <li>If denied: Shows "Using demo location" with fallback</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let testResults = [];
+        
+        function updateStatus(status, text, info = '') {
+            const statusBox = document.getElementById('statusBox');
+            const statusText = document.getElementById('statusText');
+            const statusInfo = document.getElementById('statusInfo');
+            
+            // Remove all status classes
+            statusBox.className = 'status-box';
+            statusBox.classList.add(status);
+            
+            // Update text
+            statusText.textContent = text;
+            statusInfo.textContent = info;
+            
+            // Log for debugging
+            console.log(`[Location Status] ${status}: ${text}`, info);
+            
+            // Add to test results
+            addTestResult(`Status changed to: ${status}`, 'pass');
+        }
+        
+        function showLocation(position) {
+            const details = document.getElementById('locationDetails');
+            const coords = document.getElementById('coords');
+            const accuracy = document.getElementById('accuracy');
+            const timestamp = document.getElementById('timestamp');
+            const mode = document.getElementById('mode');
+            
+            const lat = position.coords.latitude.toFixed(6);
+            const lng = position.coords.longitude.toFixed(6);
+            const acc = position.coords.accuracy.toFixed(2);
+            
+            coords.textContent = `${lat}, ${lng}`;
+            accuracy.textContent = `${acc} meters`;
+            timestamp.textContent = new Date(position.timestamp).toLocaleString();
+            mode.textContent = 'Browser Geolocation';
+            
+            details.style.display = 'block';
+            
+            // Show map preview
+            showMapPreview(lat, lng);
+            
+            // Test: Check if coordinates are valid
+            if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+                addTestResult(`✓ Valid coordinates obtained: ${lat}, ${lng}`, 'pass');
+            } else {
+                addTestResult(`✗ Invalid coordinates: ${lat}, ${lng}`, 'fail');
+            }
+            
+            // Test: Check accuracy
+            if (acc < 100) {
+                addTestResult(`✓ Good accuracy: ${acc}m`, 'pass');
+            } else {
+                addTestResult(`⚠ Low accuracy: ${acc}m (may be imprecise)`, 'pass');
+            }
+        }
+        
+        function showMapPreview(lat, lng) {
+            const mapPreview = document.getElementById('mapPreview');
+            const mapFrame = document.getElementById('mapFrame');
+            
+            // Use OpenStreetMap for preview (no API key needed)
+            const latNum = parseFloat(lat);
+            const lngNum = parseFloat(lng);
+            const bbox = `${lngNum-0.01},${latNum-0.01},${lngNum+0.01},${latNum+0.01}`;
+            mapFrame.src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${latNum},${lngNum}`;
+            mapPreview.style.display = 'block';
+            
+            addTestResult('✓ Map preview generated', 'pass');
+        }
+        
+        function showError(error) {
+            const errorDiv = document.getElementById('errorMessage');
+            let message = '';
+            
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    updateStatus('denied', 'Using demo location (Times Square, NYC)', 
+                        'Location permission denied.');
+                    message = 'Location permission denied. Using fallback location.';
+                    addTestResult('✗ Permission denied by user', 'fail');
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    updateStatus('error', 'Using demo location (Times Square, NYC)', 
+                        'GPS unavailable on this device.');
+                    message = 'GPS unavailable on this device. Using fallback location.';
+                    addTestResult('✗ Position unavailable', 'fail');
+                    break;
+                case error.TIMEOUT:
+                    updateStatus('error', 'Using demo location (Times Square, NYC)', 
+                        'Location request timed out.');
+                    message = 'Location request timed out. Using fallback location.';
+                    addTestResult('✗ Request timed out', 'fail');
+                    break;
+                default:
+                    updateStatus('error', 'Using demo location (Times Square, NYC)', 
+                        'Unable to determine your location.');
+                    message = 'Unable to determine your location. Using fallback location.';
+                    addTestResult('✗ Unknown error occurred', 'fail');
+                    break;
+            }
+            
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            
+            console.error('[Location Error]', error);
+        }
+        
+        function addTestResult(message, status) {
+            testResults.push({ message, status, time: new Date().toISOString() });
+            
+            const resultsDiv = document.getElementById('testResults');
+            const item = document.createElement('div');
+            item.className = `test-item ${status}`;
+            item.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            resultsDiv.appendChild(item);
+        }
+        
+        async function checkPermissions() {
+            addTestResult('🔍 Checking location permissions...', 'pass');
+            
+            if (!navigator.permissions) {
+                addTestResult('⚠ Permissions API not available', 'pass');
+                return;
+            }
+            
+            try {
+                const result = await navigator.permissions.query({ name: 'geolocation' });
+                addTestResult(`📍 Permission state: ${result.state}`, 'pass');
+                
+                if (result.state === 'granted') {
+                    addTestResult('✓ Location permission is GRANTED', 'pass');
+                } else if (result.state === 'denied') {
+                    addTestResult('✗ Location permission is DENIED - Please reset in browser settings', 'fail');
+                } else {
+                    addTestResult('⚠ Location permission is PROMPT - Will ask when needed', 'pass');
+                }
+                
+                // Check if HTTPS or localhost
+                const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+                if (!isSecure && location.protocol !== 'file:') {
+                    addTestResult('⚠ Not using HTTPS - Some browsers may block location access', 'fail');
+                } else if (location.protocol === 'file:') {
+                    addTestResult('⚠ Using file:// protocol - Consider using a local server instead', 'pass');
+                }
+            } catch (error) {
+                addTestResult(`Error checking permissions: ${error.message}`, 'fail');
+            }
+        }
+        
+        function openSettings() {
+            const settingsInfo = `
+📍 如何重置浏览器位置权限:
+
+**Safari:**
+1. Safari > 设置 > 网站 > 位置
+2. 找到本页面，选择"允许"或"询问"
+3. 刷新页面
+
+**Chrome:**
+1. 点击地址栏左侧的🔒或ⓘ图标
+2. 点击"网站设置"
+3. 找到"位置"，选择"允许"
+4. 刷新页面
+
+**Firefox:**
+1. 点击地址栏左侧的🔒图标
+2. 点击"清除权限"
+3. 刷新页面并重新允许
+
+**macOS系统位置服务:**
+1. 系统设置 > 隐私与安全性 > 定位服务
+2. 确保"定位服务"已开启
+3. 向下滚动找到你的浏览器
+4. 确保浏览器有位置访问权限
+
+**提示:** 如果使用file://协议，建议改用本地服务器:
+   cd /Users/ming/Documents/take-a-break/scripts
+   python3 -m http.server 8000
+   然后访问: http://localhost:8000/test-browser-location.html
+            `.trim();
+            
+            alert(settingsInfo);
+            addTestResult('ℹ️ Opened settings help', 'pass');
+        }
+        
+        function requestLocation() {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.style.display = 'none';
+            
+            const geo = navigator.geolocation;
+            
+            if (!geo || typeof geo.getCurrentPosition !== 'function') {
+                updateStatus('error', 'Using demo location', 
+                    'Geolocation is not supported in this browser.');
+                addTestResult('✗ Geolocation API not available', 'fail');
+                return;
+            }
+            
+            addTestResult('✓ Geolocation API is available', 'pass');
+            
+            updateStatus('loading', 'Getting location...', 
+                'Requesting your location from the device...');
+            
+            const options = {
+                enableHighAccuracy: true,   // Enable GPS for faster response
+                timeout: 30000,             // 30 seconds (increased from 15)
+                maximumAge: 0               // Don't use cached location
+            };
+            
+            addTestResult(`Requesting location with timeout: ${options.timeout}ms`, 'pass');
+            
+            const startTime = Date.now();
+            
+            geo.getCurrentPosition(
+                (position) => {
+                    const elapsed = Date.now() - startTime;
+                    updateStatus('granted', 'Live location active', 
+                        `Successfully located at ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`);
+                    showLocation(position);
+                    addTestResult(`✓ Location obtained successfully in ${elapsed}ms`, 'pass');
+                },
+                (error) => {
+                    const elapsed = Date.now() - startTime;
+                    addTestResult(`✗ Location request failed after ${elapsed}ms`, 'fail');
+                    showError(error);
+                },
+                options
+            );
+        }
+        
+        // Run test automatically on page load
+        window.addEventListener('load', async () => {
+            console.log('🧪 Starting location test...');
+            addTestResult('Page loaded, starting location test', 'pass');
+            
+            // First check permissions
+            await checkPermissions();
+            
+            // Add small delay to show initial state
+            setTimeout(() => {
+                requestLocation();
+            }, 1000);
+        });
+        
+        // Log test results to console
+        window.addEventListener('beforeunload', () => {
+            console.log('📊 Test Summary:');
+            console.table(testResults);
+        });
+    </script>
+</body>
+</html>
+

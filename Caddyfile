@@ -1,0 +1,33 @@
+0.0.0.0:8080 {
+	# API 后端代理
+	handle /api/* {
+		reverse_proxy localhost:3333
+	}
+
+	# 语音服务 WebSocket 代理
+	handle /ws/voice {
+		reverse_proxy localhost:8000
+	}
+
+	# 语音服务 HTTP 代理（如果有其他端点）
+	handle /voice/* {
+		reverse_proxy localhost:8000
+	}
+
+	# 前端开发服务器代理（默认）
+	# 尝试多个端口，从5174开始，支持自动端口切换
+	handle {
+		reverse_proxy localhost:5174 localhost:5175 localhost:5176 {
+			lb_policy first
+			lb_try_duration 2s
+			lb_try_interval 250ms
+		}
+	}
+
+	# 日志
+	log {
+		output stdout
+		format console
+	}
+}
+

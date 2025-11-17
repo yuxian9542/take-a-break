@@ -1,0 +1,51 @@
+{
+  "name": "@take-a-break/map",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "require": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./react": {
+      "types": "./src/react/index.ts",
+      "import": "./src/react/index.ts",
+      "require": "./src/react/index.ts",
+      "default": "./src/react/index.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "tsc --noEmit --project tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@take-a-break/types": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-native": ">=0.72.0",
+    "react-native-maps": ">=1.20.1"
+  },
+  "peerDependenciesMeta": {
+    "react-native": {
+      "optional": true
+    },
+    "react-native-maps": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/google.maps": "^3.55.0",
+    "@types/react": "~19.1.10",
+    "react-native": "^0.81.5",
+    "react-native-maps": "1.20.1",
+    "vitest": "^1.3.1"
+  }
+}

@@ -4,8 +4,8 @@
 
 set -e
 
-echo "🧪 Testing Navigation Feature"
-echo "=============================="
+echo "🧪 Testing Navigation Feature (Web)"
+echo "==================================="
 echo ""
 
 # Colors for output
@@ -15,7 +15,7 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}This script will help you test the walking navigation feature.${NC}"
+echo -e "${BLUE}This script will help you test the walking navigation experience in the web app.${NC}"
 echo ""
 
 # Function to check if command exists
@@ -31,159 +31,79 @@ if ! command_exists pnpm; then
 fi
 echo -e "${GREEN}✅ pnpm found${NC}"
 
-# Ask which platform to test
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+WEB_DIR="$SCRIPT_DIR/../apps/web"
+
+if [ ! -d "$WEB_DIR" ]; then
+    echo -e "${RED}❌ Web app directory not found: $WEB_DIR${NC}"
+    exit 1
+fi
+
+PORT=${PORT:-5173}
+LOCAL_URL="http://localhost:$PORT"
+
 echo ""
-echo "Which platform would you like to test?"
-echo "1) iOS (Simulator/Device)"
-echo "2) Android (Emulator/Device)"
-echo "3) Both"
-read -p "Enter your choice (1-3): " platform_choice
-
-case $platform_choice in
-    1)
-        PLATFORM="ios"
-        ;;
-    2)
-        PLATFORM="android"
-        ;;
-    3)
-        PLATFORM="both"
-        ;;
-    *)
-        echo -e "${RED}Invalid choice${NC}"
-        exit 1
-        ;;
-esac
-
-# Navigate to mobile app directory
-cd "$(dirname "$0")/../apps/mobile"
+echo "📂 Web app directory: $WEB_DIR"
+echo "🌐 Expected local URL: $LOCAL_URL"
 
 echo ""
 echo -e "${YELLOW}📝 Pre-test Checklist:${NC}"
-echo "1. Ensure you have location permissions enabled"
-echo "2. Make sure you have a maps app installed:"
-echo "   - iOS: Apple Maps (pre-installed)"
-echo "   - Android: Google Maps"
-echo "3. Enable location services on your device"
-echo "4. Have internet connection available"
+echo "1. Ensure location services are enabled in your browser/device"
+echo "2. Start the API server if you need live routing data:"
+echo "   cd services/api && HOST=0.0.0.0 PORT=3333 pnpm run dev"
+echo "3. Start the web app in a separate terminal:"
+echo "   cd apps/web && pnpm dev -- --host --port $PORT"
+echo "4. Open the app at $LOCAL_URL"
+echo "5. Optional: Share the URL to your phone using the LAN IP for cross-device testing"
 echo ""
-read -p "Press Enter to continue..."
+read -p "Press Enter after the development server is running..."
 
-# Function to run iOS tests
-test_ios() {
-    echo ""
-    echo -e "${BLUE}🍎 Starting iOS app...${NC}"
-    echo ""
-    
-    if command_exists xcrun; then
-        # List available simulators
-        echo "Available iOS Simulators:"
-        xcrun simctl list devices | grep -v "unavailable"
-        echo ""
-    fi
-    
-    echo "Starting app with Expo..."
-    pnpm ios
-}
+cd "$WEB_DIR"
 
-# Function to run Android tests
-test_android() {
-    echo ""
-    echo -e "${BLUE}🤖 Starting Android app...${NC}"
-    echo ""
-    
-    if command_exists adb; then
-        # Check for connected devices
-        echo "Checking for connected Android devices..."
-        adb devices
-        echo ""
-        
-        # Check if Google Maps is installed
-        echo "Checking if Google Maps is installed..."
-        if adb shell pm list packages | grep -q "com.google.android.apps.maps"; then
-            echo -e "${GREEN}✅ Google Maps is installed${NC}"
-        else
-            echo -e "${YELLOW}⚠️  Google Maps not found. Navigation may not work.${NC}"
-            echo "Install from: https://play.google.com/store/apps/details?id=com.google.android.apps.maps"
-        fi
-        echo ""
-    fi
-    
-    echo "Starting app with Expo..."
-    pnpm android
-}
-
-# Function to show test instructions
 show_test_instructions() {
     echo ""
     echo -e "${YELLOW}📋 Testing Steps:${NC}"
     echo ""
-    echo "1. Wait for the app to load"
-    echo "2. Go to the 'Break' tab"
-    echo "3. Select your feeling status (e.g., 'tired')"
-    echo "4. Select available time (e.g., '15 mins')"
-    echo "5. Tap the 'Start' button"
-    echo "6. Review the generated break plan"
-    echo "7. Find a 'Walk' step and tap 'Navigate'"
-    echo "8. In the map modal:"
-    echo "   - Verify your current location is shown"
-    echo "   - Browse nearby destinations (horizontal scroll)"
-    echo "   - Select a destination"
-    echo "   - Wait for route calculation"
-    echo "   - Tap the 'Navigate' button"
-    echo "9. The maps app should open with walking directions"
+    echo "1. From the home screen, navigate to the Break Planner flow"
+    echo "2. Select how you're feeling (e.g., 'tired')"
+    echo "3. Choose an availability window (e.g., '15 mins')"
+    echo "4. Generate a break plan and review the itinerary"
+    echo "5. Locate a step that suggests going for a walk"
+    echo "6. Click the navigation action to open the map experience"
+    echo "7. In the map view:"
+    echo "   - Confirm your current location loads without errors"
+    echo "   - Inspect the list of suggested destinations"
+    echo "   - Select one destination to preview the route"
+    echo "   - Verify the polyline and distance/time estimates display"
+    echo "   - Use the external navigation link (Google Maps) to open directions"
     echo ""
     echo -e "${GREEN}Expected Results:${NC}"
-    echo "✅ Native maps app opens"
-    echo "✅ Walking route is displayed"
-    echo "✅ Navigation starts from current location"
-    echo "✅ Destination matches selected place"
+    echo "✅ Location status transitions from 'Getting location...' to 'Live location active'"
+    echo "✅ Map centers near your current coordinates or fallback location"
+    echo "✅ Route summary updates when selecting different destinations"
+    echo "✅ External navigation link opens in a new browser tab"
+    echo "✅ Returning to the planner keeps the state intact"
     echo ""
-    echo -e "${YELLOW}Common Issues:${NC}"
-    echo "❌ No response → Check if maps app is installed"
-    echo "❌ Wrong location → Check location permissions"
-    echo "❌ No route → Check internet connection"
+    echo -e "${YELLOW}Troubleshooting:${NC}"
+    echo "❌ Location denied → Reset browser permissions and reload"
+    echo "❌ No destinations → Ensure API server is running or mock data enabled"
+    echo "❌ Directions link blocked → Allow pop-ups for $LOCAL_URL"
     echo ""
 }
 
-# Show test instructions
 show_test_instructions
 
-# Run tests based on platform choice
-case $PLATFORM in
-    "ios")
-        test_ios
-        ;;
-    "android")
-        test_android
-        ;;
-    "both")
-        echo "Choose which platform to start first:"
-        echo "1) iOS"
-        echo "2) Android"
-        read -p "Enter your choice: " first_platform
-        
-        if [ "$first_platform" = "1" ]; then
-            test_ios
-        else
-            test_android
-        fi
-        
-        echo ""
-        read -p "Press Enter to test the other platform..."
-        
-        if [ "$first_platform" = "1" ]; then
-            test_android
-        else
-            test_ios
-        fi
-        ;;
-esac
+echo ""
+echo -e "${BLUE}Optional Follow-ups:${NC}"
+echo "- Test responsive layout by resizing the browser window"
+echo "- Repeat the flow on a mobile browser via the LAN URL"
+echo "- Capture console logs for any geolocation errors"
+echo ""
 
 echo ""
 echo -e "${GREEN}🎉 Testing session completed!${NC}"
 echo ""
 echo "Please report any issues you encountered."
-echo "Check the console logs for detailed error messages."
+echo "Check the browser console and network logs for detailed error messages."
 echo ""
 

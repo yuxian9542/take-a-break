@@ -1,0 +1,92 @@
+.map-wrapper {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  height: 480px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 16px;
+  box-shadow: 0 20px 40px -24px rgba(15, 118, 110, 0.45);
+}
+
+.map-canvas {
+  width: 100%;
+  height: 100%;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.map-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.map-panel h3 {
+  margin: 0;
+  color: #0f766e;
+}
+
+.map-panel ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.map-panel li button {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(14, 116, 144, 0.1);
+  border-radius: 16px;
+  background: rgba(236, 253, 245, 0.6);
+  padding: 12px 16px;
+  display: grid;
+  gap: 6px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.map-panel li.is-active button,
+.map-panel li button:hover {
+  border-color: rgba(14, 116, 144, 0.4);
+  box-shadow: 0 10px 20px -16px rgba(14, 116, 144, 0.6);
+}
+
+.spot-name {
+  font-weight: 600;
+  color: #083344;
+}
+
+.spot-meta {
+  font-size: 13px;
+  color: #0e7490;
+}
+
+.spot-desc {
+  font-size: 14px;
+  color: #0f766e;
+}
+
+.map-placeholder {
+  border-radius: 24px;
+  padding: 32px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.85);
+  color: #0f766e;
+  box-shadow: inset 0 0 0 1px rgba(14, 116, 144, 0.15);
+}
+
+@media (max-width: 960px) {
+  .map-wrapper {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .map-panel {
+    max-height: 260px;
+  }
+}
+
