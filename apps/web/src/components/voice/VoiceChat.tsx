@@ -19,9 +19,10 @@ interface Message {
 
 interface VoiceChatProps {
   wsUrl: string;
+  systemPrompt?: string;
 }
 
-export function VoiceChat({ wsUrl }: VoiceChatProps) {
+export function VoiceChat({ wsUrl, systemPrompt }: VoiceChatProps) {
   const [isActive, setIsActive] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentUserText, setCurrentUserText] = useState<string>("");
@@ -35,6 +36,8 @@ export function VoiceChat({ wsUrl }: VoiceChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const shouldStopSendingRef = useRef(false);
   const isPlayingRef = useRef<boolean>(false);
+  const systemPromptRef = useRef<string | null>(systemPrompt?.trim() ? systemPrompt.trim() : null);
+  const lastSentPromptRef = useRef<string | null>(null);
 
   // Auto-scroll messages
   useEffect(() => {
@@ -49,6 +52,30 @@ export function VoiceChat({ wsUrl }: VoiceChatProps) {
     };
   }, []);
 
+  useEffect(() => {
+    const trimmed = systemPrompt?.trim() ?? null;
+    systemPromptRef.current = trimmed && trimmed.length > 0 ? trimmed : null;
+
+    if (!systemPromptRef.current) {
+      lastSentPromptRef.current = null;
+      return;
+    }
+
+    const client = wsRef.current;
+    if (client && client.isConnected() && lastSentPromptRef.current !== systemPromptRef.current) {
+      try {
+        client.send({
+          type: "control",
+          action: "set_system_prompt",
+          prompt: systemPromptRef.current
+        });
+        lastSentPromptRef.current = systemPromptRef.current;
+      } catch (err) {
+        console.error("Failed to send updated system prompt.", err);
+      }
+    }
+  }, [systemPrompt]);
+
   const startChat = useCallback(async () => {
     if (isActive) return;
 
@@ -61,6 +88,14 @@ export function VoiceChat({ wsUrl }: VoiceChatProps) {
         console.log("WebSocket connected");
         // Set language to auto-detect (null)
         client.send({ type: "control", action: "set_language", language: null });
+        if (systemPromptRef.current) {
+          client.send({
+            type: "control",
+            action: "set_system_prompt",
+            prompt: systemPromptRef.current
+          });
+          lastSentPromptRef.current = systemPromptRef.current;
+        }
         setMessages([]);
         setCurrentUserText("");
         setConnectionError(null);
@@ -69,6 +104,7 @@ export function VoiceChat({ wsUrl }: VoiceChatProps) {
         console.log("WebSocket closed");
         setIsActive(false);
         stopRecording();
+        lastSentPromptRef.current = null;
       },
       onMessage: (msg) => {
         if (msg.type === "reply_audio_chunk") {
@@ -200,6 +236,7 @@ export function VoiceChat({ wsUrl }: VoiceChatProps) {
     setMessages([]);
     setCurrentUserText("");
     isPlayingRef.current = false;
+    lastSentPromptRef.current = null;
     
     console.log("Chat ended");
   }, [isActive]);

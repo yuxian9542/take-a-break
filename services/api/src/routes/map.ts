@@ -8,6 +8,7 @@ import {
   GoogleDirectionsEngine,
   LocationProviderError
 } from '@take-a-break/map';
+import { loadConfig } from '@take-a-break/config';
 import type {
   GeolocationMode,
   LocationState,
@@ -277,9 +278,9 @@ const mockPlaces: NearbyPlace[] = [
 ];
 
 // Initialize repositories and services
-// Check if Google Maps API is configured
-const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
-const useRealMapApi = process.env.USE_REAL_MAP_API === 'true';
+const config = loadConfig();
+const googleMapsApiKey = config.GOOGLE_MAPS_API_KEY;
+const useRealMapApi = config.USE_REAL_MAP_API;
 
 // Initialize places repository
 let placesRepo: PlacesRepository;

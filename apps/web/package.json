@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@react-google-maps/api": "^2.20.0",
     "@take-a-break/api-client": "workspace:*",
     "@take-a-break/map": "workspace:*",
     "@take-a-break/ui": "workspace:*",

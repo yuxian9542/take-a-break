@@ -37,6 +37,7 @@ app.add_middleware(
 
 glm_client = GlmVoiceClient()
 sessions: Dict[str, SessionState] = {}
+MAX_SYSTEM_PROMPT_CHARS = 2000
 
 
 @app.get("/health")
@@ -177,6 +178,9 @@ async def process_glm_request(websocket, session_id, state, audio_b64):
     else:
         logger.info("📜 [NO HISTORY] session=%s - First turn", session_id)
     
+    if state.system_prompt:
+        logger.info("🧭 [SYSTEM PROMPT] session=%s using %d chars of context", session_id, len(state.system_prompt))
+    
     assistant_text_parts = []
     chunk_idx = 0
     first_chunk_received = False
@@ -185,6 +189,7 @@ async def process_glm_request(websocket, session_id, state, audio_b64):
         audio_b64=audio_b64,
         history_text=state.history_text if state.history_text else None,
         language=state.language,
+        system_prompt=state.system_prompt,
     )
     
     # Iterate through streaming results
@@ -281,6 +286,19 @@ async def handle_control_message(
             await send_json_safe(websocket, {"type": "info", "message": f"Language: {lang_name}"})
         else:
             await send_json_safe(websocket, {"type": "error", "message": f"Invalid language: {language}"})
+    elif action == "set_system_prompt":
+        prompt = message.get("prompt")
+        if isinstance(prompt, str) and prompt.strip():
+            sanitized = prompt.strip()
+            if len(sanitized) > MAX_SYSTEM_PROMPT_CHARS:
+                sanitized = sanitized[:MAX_SYSTEM_PROMPT_CHARS]
+            state.system_prompt = sanitized
+            logger.info("session=%s system prompt stored (%d chars)", session_id, len(sanitized))
+            await send_json_safe(websocket, {"type": "info", "message": "Context received"})
+        else:
+            state.system_prompt = None
+            logger.info("session=%s system prompt cleared", session_id)
+            await send_json_safe(websocket, {"type": "info", "message": "Context cleared"})
     else:
         await send_json_safe(websocket, {"type": "error", "message": f"Unknown action: {action}"})
 

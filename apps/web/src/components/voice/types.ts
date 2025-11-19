@@ -10,6 +10,11 @@ export type ClientMessage =
       type: "control";
       action: "set_language";
       language: "zh" | "en" | null; // null = auto-detect
+    }
+  | {
+      type: "control";
+      action: "set_system_prompt";
+      prompt: string;
     };
 
 export type ServerMessage =
