@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import logging
 import os
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Optional
 
@@ -20,7 +21,16 @@ class GlmVoiceClient:
 
     def __init__(self, api_key: Optional[str] = None, whisper_model_name: str = "medium") -> None:
         """Initialize the GLM-4-Voice HTTP client and local Whisper model."""
-        load_dotenv()
+        env_root = Path(__file__).resolve().parents[1]
+        env_files = [env_root / ".env.local", env_root / ".env"]
+        loaded = False
+        for candidate in env_files:
+            if candidate.exists():
+                load_dotenv(dotenv_path=candidate)
+                loaded = True
+                break
+        if not loaded:
+            load_dotenv()
         
         # GLM-4-Voice client
         glm_key = api_key or os.getenv("GLM_API_KEY")
@@ -315,4 +325,3 @@ class GlmVoiceClient:
         if hasattr(self, '_last_transcript_future'):
             delattr(self, '_last_transcript_future')
             logger.debug("Cleared stored transcript")
-

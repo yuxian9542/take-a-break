@@ -4,7 +4,7 @@ This document describes the environment variables needed for the web application
 
 ## Configuration Variables
 
-Create a `.env` file in `apps/web/` with the following variables:
+Copy `.env.example` to `.env.local` in `apps/web/` and set the following variables:
 
 ### API Configuration
 ```bash
@@ -40,7 +40,7 @@ The voice chat feature requires the Python backend to be running.
    ./setup.sh
    ```
 
-3. Create a `.env` file in `services/voice/web_agent/` with your GLM API key:
+3. Copy `.env.example` to `.env.local` in `services/voice/web_agent/` and set your GLM API key:
    ```bash
    GLM_API_KEY=your_glm_api_key_here
    ```
@@ -81,6 +81,5 @@ cd services/voice/web_agent
 - The web app will run on http://localhost:5173
 - The voice backend will run on http://localhost:8000
 - If the voice backend is not running, the voice chat interface will show a connection error but the rest of the app will work normally
-
 
 

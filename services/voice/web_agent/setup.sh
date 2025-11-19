@@ -27,12 +27,12 @@ source venv/bin/activate
 echo "Installing Python dependencies..."
 pip install -r requirements.txt
 
-# Setup .env if it doesn't exist
-if [ ! -f ".env" ]; then
+# Setup .env.local if it doesn't exist
+if [ ! -f ".env.local" ]; then
     echo ""
-    echo "⚙️  Creating .env file..."
-    cp env.example .env
-    echo "⚠️  IMPORTANT: Edit .env and add your GLM_API_KEY"
+    echo "⚙️  Creating .env.local file..."
+    cp .env.example .env.local
+    echo "⚠️  IMPORTANT: Edit .env.local and add your GLM_API_KEY"
     echo ""
 fi
 
@@ -52,9 +52,8 @@ echo ""
 echo "✅ Setup complete!"
 echo ""
 echo "Next steps:"
-echo "1. Edit .env and add your GLM_API_KEY"
+echo "1. Edit .env.local and add your GLM_API_KEY"
 echo "2. Start backend: cd backend && ../venv/bin/python -m uvicorn main:app --reload --port 8000"
 echo "3. Start frontend (new terminal): cd frontend && npm run dev"
 echo "4. Open http://localhost:5173 in your browser"
 echo ""
-

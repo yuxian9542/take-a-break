@@ -10,8 +10,8 @@ Use this checklist to ensure everything is set up correctly.
 
 ## Setup Steps
 - [ ] Run `./setup.sh` successfully
-- [ ] Create `.env` file from `env.example`
-- [ ] Add your GLM_API_KEY to `.env`
+- [ ] Create `.env.local` file from `.env.example`
+- [ ] Add your GLM_API_KEY to `.env.local`
 - [ ] Verify `venv/` directory exists
 - [ ] Verify `frontend/node_modules/` directory exists
 
@@ -41,7 +41,7 @@ Use this checklist to ensure everything is set up correctly.
 ## Common Issues
 
 ### Backend won't start
-- Check `.env` file exists and has valid API key
+- Check `.env.local` file exists and has valid API key
 - Verify virtual environment: `source venv/bin/activate` then `which python`
 - Check ports: `lsof -i :8000` (kill if needed)
 
@@ -87,4 +87,3 @@ Use this checklist to ensure everything is set up correctly.
 ./start_backend.sh      # Start backend (Terminal 1)
 ./start_frontend.sh     # Start frontend (Terminal 2)
 ```
-

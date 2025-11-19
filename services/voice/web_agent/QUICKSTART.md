@@ -6,8 +6,9 @@
 ```
 
 ## 2. Configure API Key
-Edit `.env` and add your GLM API key:
+Copy `.env.example` to `.env.local` and add your GLM API key:
 ```bash
+cp .env.example .env.local
 GLM_API_KEY=your_actual_api_key_here
 ```
 
@@ -29,4 +30,3 @@ Open http://localhost:5173 and click "Start Chat"! 🎤
 ---
 
 See [README.md](README.md) for full documentation.
-

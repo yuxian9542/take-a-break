@@ -11,8 +11,10 @@
     "test:web": "pnpm --filter @take-a-break/web test"
   },
   "devDependencies": {
+    "@take-a-break/config": "workspace:*",
     "@types/node": "^20.11.19",
     "concurrently": "^8.2.2",
+    "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   },
   "workspaces": [

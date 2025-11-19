@@ -62,13 +62,19 @@ cd ../../..
 
 #### 2. Configure Environment
 
-Create `services/voice/web_agent/.env`:
+Copy the sample files and fill in your secrets:
 ```bash
-GLM_API_KEY=your_actual_api_key_here
+cp services/voice/web_agent/.env.example services/voice/web_agent/.env.local
+cp apps/web/.env.example apps/web/.env.local
 ```
 
-Optionally create `apps/web/.env` to customize the WebSocket URL:
+Then edit the new `.env.local` files:
 ```bash
+# services/voice/web_agent/.env.local
+GLM_API_KEY=your_actual_api_key_here
+VITE_BACKEND_URL=http://localhost:8000
+
+# apps/web/.env.local (optional override)
 VITE_VOICE_WS_URL=ws://localhost:8000/ws/voice
 ```
 
@@ -163,7 +169,7 @@ pnpm dev:voice-backend
 **Solution:**
 1. Ensure backend is running: `pnpm dev:voice-backend`
 2. Check backend logs for errors
-3. Verify GLM API key is set in `services/voice/web_agent/.env`
+3. Verify GLM API key is set in `services/voice/web_agent/.env.local`
 4. Confirm WebSocket URL is correct in configuration
 
 ### Microphone Permission Error
@@ -237,6 +243,4 @@ For issues or questions:
 1. Check backend logs in `services/voice/web_agent/backend/`
 2. Review browser console for frontend errors
 3. Verify environment configuration in ENV_SETUP.md
-
-
 

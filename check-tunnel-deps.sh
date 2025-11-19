@@ -48,34 +48,39 @@ else
 fi
 echo ""
 
-# 检查 .env 文件
+# 检查环境文件
 echo "检查环境配置..."
-if [ -f ".env" ]; then
-    echo -e "${GREEN}✓${NC} .env 文件存在"
+ENV_FILE=".env.local"
+if [ ! -f "$ENV_FILE" ] && [ -f ".env" ]; then
+    ENV_FILE=".env"
+fi
+
+if [ -f "$ENV_FILE" ]; then
+    echo -e "${GREEN}✓${NC} ${ENV_FILE} 文件存在"
     
     # 检查关键配置
-    if grep -q "^VITE_API_BASE_URL=/api" .env; then
+    if grep -q "^VITE_API_BASE_URL=/api" "$ENV_FILE"; then
         echo -e "  ${GREEN}✓${NC} API 配置正确（相对路径）"
     else
         echo -e "  ${YELLOW}⚠${NC} API 未配置为相对路径"
         echo "    建议运行: ./setup-tunnel-env.sh"
     fi
     
-    if grep -q "^VITE_VOICE_WS_URL=/ws/voice" .env; then
+    if grep -q "^VITE_VOICE_WS_URL=/ws/voice" "$ENV_FILE"; then
         echo -e "  ${GREEN}✓${NC} 语音 WebSocket 配置正确（相对路径）"
     else
         echo -e "  ${YELLOW}⚠${NC} 语音 WebSocket 未配置为相对路径"
         echo "    建议运行: ./setup-tunnel-env.sh"
     fi
     
-    if grep -q "^VITE_GOOGLE_MAPS_API_KEY=.\+" .env && ! grep -q "你的" .env; then
+    if grep -q "^VITE_GOOGLE_MAPS_API_KEY=.\+" "$ENV_FILE" && ! grep -q "你的" "$ENV_FILE"; then
         echo -e "  ${GREEN}✓${NC} Google Maps API Key 已配置"
     else
         echo -e "  ${YELLOW}⚠${NC} Google Maps API Key 未配置或为占位符"
-        echo "    请编辑 .env 文件设置有效的 API Key"
+        echo "    请编辑 ${ENV_FILE} 文件设置有效的 API Key"
     fi
 else
-    echo -e "${RED}✗${NC} .env 文件不存在"
+    echo -e "${RED}✗${NC} 未找到 .env.local 或 .env 文件"
     echo -e "  ${YELLOW}创建:${NC} ./setup-tunnel-env.sh"
     ALL_OK=false
 fi
@@ -104,5 +109,4 @@ else
     echo "完成后再次运行此脚本检查"
 fi
 echo "════════════════════════════════════════"
-
 
