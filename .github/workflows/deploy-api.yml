@@ -1,0 +1,119 @@
+name: Deploy API (Fly.io)
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'services/api/**'
+      - 'packages/**'
+      - 'infra/firebase/**'
+      - 'pnpm-lock.yaml'
+      - 'package.json'
+      - 'services/api/Dockerfile'
+      - '.github/workflows/deploy-api.yml'
+  pull_request:
+    paths:
+      - 'services/api/**'
+      - 'packages/**'
+      - 'infra/firebase/**'
+      - 'pnpm-lock.yaml'
+      - 'package.json'
+
+concurrency:
+  group: deploy-api-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/take-a-break-api
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8.15.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint API
+        run: pnpm --filter @take-a-break/api lint
+
+  deploy:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      deployments: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select environment
+        run: |
+          REF="${{ github.ref_name }}"
+          if [ "$REF" = "develop" ]; then
+            echo "IMAGE_TAG=staging" >> $GITHUB_ENV
+            echo "FLY_APP=api-example-staging" >> $GITHUB_ENV
+            echo "APP_ENV=staging" >> $GITHUB_ENV
+          else
+            echo "IMAGE_TAG=latest" >> $GITHUB_ENV
+            echo "FLY_APP=api-example" >> $GITHUB_ENV
+            echo "APP_ENV=production" >> $GITHUB_ENV
+          fi
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT }}
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: services/api/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          build-args: |
+            APP_ENV=${{ env.APP_ENV }}
+
+      - name: Setup flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@v1
+
+      - name: Deploy to Fly.io
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl deploy \
+            --remote-only \
+            --app "${{ env.FLY_APP }}" \
+            --image "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
+            --region lax

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 import { loadConfig } from '@take-a-break/config';
-import type { HealthResponse, MetaConfigResponse } from '@take-a-break/types/public.js';
+import type { HealthResponse, MetaConfigResponse } from '@take-a-break/types/public';
 
 async function publicRoutes(fastify: FastifyInstance) {
   fastify.get('/health', async (): Promise<HealthResponse> => {

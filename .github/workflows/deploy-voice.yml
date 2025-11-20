@@ -1,0 +1,82 @@
+name: Deploy Voice (Fly.io)
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'services/voice/**'
+      - 'packages/config/**'
+      - 'pnpm-lock.yaml'
+      - 'services/voice/web_agent/Dockerfile'
+      - '.github/workflows/deploy-voice.yml'
+  pull_request:
+    paths:
+      - 'services/voice/**'
+      - 'packages/config/**'
+
+concurrency:
+  group: deploy-voice-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/take-a-break-voice
+
+jobs:
+  deploy:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      deployments: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select environment
+        run: |
+          REF="${{ github.ref_name }}"
+          if [ "$REF" = "develop" ]; then
+            echo "IMAGE_TAG=staging" >> $GITHUB_ENV
+            echo "FLY_APP=voice-example-staging" >> $GITHUB_ENV
+          else
+            echo "IMAGE_TAG=latest" >> $GITHUB_ENV
+            echo "FLY_APP=voice-example" >> $GITHUB_ENV
+          fi
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: services/voice/web_agent/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Setup flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@v1
+
+      - name: Deploy to Fly.io
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl deploy \
+            --remote-only \
+            --app "${{ env.FLY_APP }}" \
+            --image "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
+            --region lax

@@ -2,7 +2,7 @@ import dotenvFlow from 'dotenv-flow';
 import { configSchema, type AppConfig } from './schema';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { z, type ZodSchema } from 'zod';
+import { z, type ZodType, type ZodTypeDef } from 'zod';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -36,7 +36,7 @@ function ensureEnvLoaded(options?: LoadEnvOptions) {
 }
 
 export function loadEnvSection<T>(
-  schema: ZodSchema<T>,
+  schema: ZodType<T, ZodTypeDef, unknown>,
   options?: LoadEnvOptions & { errorPrefix?: string }
 ): T {
   const { envDir } = ensureEnvLoaded(options);

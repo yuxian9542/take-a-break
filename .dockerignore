@@ -1,0 +1,14 @@
+.git
+node_modules
+**/node_modules
+**/dist
+**/.env*
+**/venv
+pnpm-store
+logs
+apps/web/.vite
+apps/web/node_modules
+services/voice/web_agent/frontend/node_modules
+services/voice/web_agent/venv
+*.log
+*.tmp

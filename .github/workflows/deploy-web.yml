@@ -1,0 +1,96 @@
+name: Deploy Web (Cloudflare Pages)
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'apps/web/**'
+      - 'packages/**'
+      - 'services/**'
+      - 'pnpm-lock.yaml'
+      - 'package.json'
+      - '.github/workflows/deploy-web.yml'
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'packages/**'
+      - 'services/**'
+      - 'pnpm-lock.yaml'
+      - 'package.json'
+
+concurrency:
+  group: deploy-web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8.15.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Select environment
+        id: env
+        run: |
+          EVENT="${{ github.event_name }}"
+          REF="${{ github.ref_name }}"
+
+          if [ "$EVENT" = "pull_request" ]; then
+            echo "TARGET_BRANCH=pr-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+            echo "VITE_API_BASE_URL=${{ secrets.WEB_API_BASE_URL_PREVIEW }}" >> $GITHUB_ENV
+            echo "VITE_VOICE_WS_URL=${{ secrets.WEB_VOICE_WS_URL_PREVIEW }}" >> $GITHUB_ENV
+            echo "VITE_GOOGLE_MAPS_API_KEY=${{ secrets.WEB_GOOGLE_MAPS_API_KEY }}" >> $GITHUB_ENV
+          elif [ "$REF" = "develop" ]; then
+            echo "TARGET_BRANCH=staging" >> $GITHUB_ENV
+            echo "VITE_API_BASE_URL=${{ secrets.WEB_API_BASE_URL_STAGING }}" >> $GITHUB_ENV
+            echo "VITE_VOICE_WS_URL=${{ secrets.WEB_VOICE_WS_URL_STAGING }}" >> $GITHUB_ENV
+            echo "VITE_GOOGLE_MAPS_API_KEY=${{ secrets.WEB_GOOGLE_MAPS_API_KEY }}" >> $GITHUB_ENV
+          else
+            echo "TARGET_BRANCH=production" >> $GITHUB_ENV
+            echo "VITE_API_BASE_URL=${{ secrets.WEB_API_BASE_URL_PROD }}" >> $GITHUB_ENV
+            echo "VITE_VOICE_WS_URL=${{ secrets.WEB_VOICE_WS_URL_PROD }}" >> $GITHUB_ENV
+            echo "VITE_GOOGLE_MAPS_API_KEY=${{ secrets.WEB_GOOGLE_MAPS_API_KEY }}" >> $GITHUB_ENV
+          fi
+
+      - name: Test web app
+        run: pnpm test:web
+
+      - name: Lint API types
+        run: pnpm --filter @take-a-break/api lint
+
+      - name: Build web bundle
+        env:
+          VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL }}
+          VITE_VOICE_WS_URL: ${{ env.VITE_VOICE_WS_URL }}
+          VITE_GOOGLE_MAPS_API_KEY: ${{ env.VITE_GOOGLE_MAPS_API_KEY }}
+        run: pnpm build:web
+
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: take-a-break
+          directory: apps/web/dist
+          branch: ${{ env.TARGET_BRANCH }}
+          commitHash: ${{ github.sha }}
