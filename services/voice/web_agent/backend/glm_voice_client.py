@@ -35,13 +35,10 @@ class GlmVoiceClient:
         # GLM-4-Voice client
         glm_key = api_key or os.getenv("GLM_API_KEY")
         if not glm_key:
-            logger.warning(
-                "GLM_API_KEY is not set. Voice model features will be disabled. "
-                "Set GLM_API_KEY in .env file or environment variables to enable voice chat."
+            raise RuntimeError(
+                "GLM_API_KEY is not set. Please export it before starting the server."
             )
-            self.client = None
-        else:
-            self.client = ZhipuAI(api_key=glm_key)
+        self.client = ZhipuAI(api_key=glm_key)
         
         # Thread pool for parallel transcription
         self.executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="whisper-")
@@ -134,11 +131,6 @@ class GlmVoiceClient:
             - {'type': 'text', 'content': str} - Assistant's text response
             - {'type': 'done'} - Stream complete
         """
-        if not self.client:
-            logger.error("GLM client not initialized. GLM_API_KEY is required for voice chat.")
-            yield {"type": "error", "message": "Voice model not configured. Please set GLM_API_KEY."}
-            return
-        
         if not audio_b64:
             logger.warning("Empty audio payload passed to chat_stream.")
             return
