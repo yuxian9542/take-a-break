@@ -4,7 +4,7 @@ This document describes the environment variables needed for the web application
 
 ## Configuration Variables
 
-Create a `.env` file in `apps/web/` with the following variables:
+Copy `.env.example` to `.env.local` in `apps/web/` and set the following variables:
 
 ### API Configuration
 ```bash
@@ -24,6 +24,19 @@ VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
 VITE_VOICE_WS_URL=ws://localhost:8000/ws/voice
 ```
 
+### Firebase Configuration
+```bash
+# Get these values from Firebase Console: https://console.firebase.google.com/
+# Project Settings > General > Your apps > Web app config
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id  # Optional, for Analytics
+```
+
 ## Voice Backend Setup
 
 The voice chat feature requires the Python backend to be running.
@@ -40,7 +53,7 @@ The voice chat feature requires the Python backend to be running.
    ./setup.sh
    ```
 
-3. Create a `.env` file in `services/voice/web_agent/` with your GLM API key:
+3. Copy `.env.example` to `.env.local` in `services/voice/web_agent/` and set your GLM API key:
    ```bash
    GLM_API_KEY=your_glm_api_key_here
    ```
@@ -76,11 +89,28 @@ cd services/voice/web_agent
 ./start_backend.sh
 ```
 
+## Firebase Setup
+
+1. Create a Firebase project at https://console.firebase.google.com/
+2. Enable Authentication:
+   - Go to Authentication > Sign-in method
+   - Enable Email/Password provider
+3. Enable Firestore Database:
+   - Go to Firestore Database
+   - Create database in production mode
+   - Set up security rules (see Firebase Console)
+4. Get your Firebase config:
+   - Go to Project Settings > General
+   - Scroll down to "Your apps" section
+   - Click on the web app icon (</>) or create a new web app
+   - Copy the config values to your `.env` file
+
 ## Notes
 
 - The web app will run on http://localhost:5173
 - The voice backend will run on http://localhost:8000
 - If the voice backend is not running, the voice chat interface will show a connection error but the rest of the app will work normally
-
+- Firebase authentication is required to use voice chat features
+- Conversation history is stored in Firestore and requires proper Firebase configuration
 
 

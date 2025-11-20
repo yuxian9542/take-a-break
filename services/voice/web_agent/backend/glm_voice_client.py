@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import logging
 import os
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Optional
 
@@ -20,15 +21,27 @@ class GlmVoiceClient:
 
     def __init__(self, api_key: Optional[str] = None, whisper_model_name: str = "medium") -> None:
         """Initialize the GLM-4-Voice HTTP client and local Whisper model."""
-        load_dotenv()
+        env_root = Path(__file__).resolve().parents[1]
+        env_files = [env_root / ".env.local", env_root / ".env"]
+        loaded = False
+        for candidate in env_files:
+            if candidate.exists():
+                load_dotenv(dotenv_path=candidate)
+                loaded = True
+                break
+        if not loaded:
+            load_dotenv()
         
         # GLM-4-Voice client
         glm_key = api_key or os.getenv("GLM_API_KEY")
         if not glm_key:
-            raise RuntimeError(
-                "GLM_API_KEY is not set. Please export it before starting the server."
+            logger.warning(
+                "GLM_API_KEY is not set. Voice model features will be disabled. "
+                "Set GLM_API_KEY in .env file or environment variables to enable voice chat."
             )
-        self.client = ZhipuAI(api_key=glm_key)
+            self.client = None
+        else:
+            self.client = ZhipuAI(api_key=glm_key)
         
         # Thread pool for parallel transcription
         self.executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="whisper-")
@@ -121,6 +134,11 @@ class GlmVoiceClient:
             - {'type': 'text', 'content': str} - Assistant's text response
             - {'type': 'done'} - Stream complete
         """
+        if not self.client:
+            logger.error("GLM client not initialized. GLM_API_KEY is required for voice chat.")
+            yield {"type": "error", "message": "Voice model not configured. Please set GLM_API_KEY."}
+            return
+        
         if not audio_b64:
             logger.warning("Empty audio payload passed to chat_stream.")
             return
@@ -315,4 +333,3 @@ class GlmVoiceClient:
         if hasattr(self, '_last_transcript_future'):
             delattr(self, '_last_transcript_future')
             logger.debug("Cleared stored transcript")
-

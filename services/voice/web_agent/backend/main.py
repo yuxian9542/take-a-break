@@ -22,6 +22,13 @@ import audio_utils
 from config import FRAME_DURATION_MS, SILENCE_THRESHOLD, SAMPLE_RATE
 from session_manager import SessionState
 from vad import update_vad_state
+from auth import verify_id_token, get_user_id_from_token
+from firestore_client import (
+    create_conversation,
+    save_conversation_turn,
+    build_history_text
+)
+from summarizer import check_and_summarize
 
 # Use uvicorn's logger to ensure console output
 logger = logging.getLogger("uvicorn")
@@ -37,6 +44,7 @@ app.add_middleware(
 
 glm_client = GlmVoiceClient()
 sessions: Dict[str, SessionState] = {}
+MAX_SYSTEM_PROMPT_CHARS = 2000
 
 
 @app.get("/health")
@@ -168,23 +176,41 @@ async def process_glm_request(websocket, session_id, state, audio_b64):
     start_time = time.time()
     logger.info("⏱️ session=%s STARTING GLM-4-Voice request at %.3fs", session_id, start_time)
     
+    # Load fresh history from Firestore if user_id is available
+    history_to_use = state.history_text
+    if state.user_id:
+        try:
+            history_to_use = build_history_text(state.user_id)
+            # Update state for consistency
+            state.history_text = history_to_use
+        except Exception as e:
+            logger.warning("Failed to load history from Firestore, using in-memory: %s", e)
+            history_to_use = state.history_text
+    
     # Log the current history being sent
-    if state.history_text:
+    if history_to_use:
         logger.info("=" * 80)
         logger.info("📜 [HISTORY SENT TO GLM] session=%s", session_id)
-        logger.info("History content:\n%s", state.history_text)
+        logger.info("History content:\n%s", history_to_use[:500] + "..." if len(history_to_use) > 500 else history_to_use)
         logger.info("=" * 80)
     else:
         logger.info("📜 [NO HISTORY] session=%s - First turn", session_id)
+    
+    if state.system_prompt:
+        logger.info("🧭 [SYSTEM PROMPT] session=%s using %d chars of context", session_id, len(state.system_prompt))
     
     assistant_text_parts = []
     chunk_idx = 0
     first_chunk_received = False
     
+    # Use Firestore-loaded history
+    history_for_glm = history_to_use if history_to_use else None
+    
     stream_gen = glm_client.chat_stream(
         audio_b64=audio_b64,
-        history_text=state.history_text if state.history_text else None,
+        history_text=history_for_glm,
         language=state.language,
+        system_prompt=state.system_prompt,
     )
     
     # Iterate through streaming results
@@ -247,14 +273,30 @@ async def process_glm_request(websocket, session_id, state, audio_b64):
                 user_text = state.pending_user_transcript if state.pending_user_transcript else "[audio input]"
                 
                 if state.pending_assistant_text:
+                    # Update in-memory history (for current session)
                     if state.history_text:
                         state.history_text += f"\nUser: {user_text}\nAssistant: {state.pending_assistant_text}"
                     else:
                         state.history_text = f"User: {user_text}\nAssistant: {state.pending_assistant_text}"
                     logger.info("=" * 80)
                     logger.info("📝 [HISTORY UPDATED] session=%s - %d chars", session_id, len(state.history_text))
-                    logger.info("New history:\n%s", state.history_text)
                     logger.info("=" * 80)
+                    
+                    # Save to Firestore if user_id and conversation_id are available
+                    if state.user_id and state.conversation_id:
+                        try:
+                            save_conversation_turn(
+                                state.user_id,
+                                state.conversation_id,
+                                user_text,
+                                state.pending_assistant_text
+                            )
+                            logger.info("💾 [FIRESTORE SAVED] conversation_id=%s", state.conversation_id)
+                            
+                            # Check if summarization is needed (async, non-blocking)
+                            asyncio.create_task(asyncio.to_thread(check_and_summarize, state.user_id))
+                        except Exception as e:
+                            logger.error("Failed to save to Firestore: %s", e)
                     
                     # Clear pending texts for next turn
                     state.pending_user_transcript = None
@@ -281,8 +323,52 @@ async def handle_control_message(
             await send_json_safe(websocket, {"type": "info", "message": f"Language: {lang_name}"})
         else:
             await send_json_safe(websocket, {"type": "error", "message": f"Invalid language: {language}"})
+    elif action == "set_system_prompt":
+        prompt = message.get("prompt")
+        if isinstance(prompt, str) and prompt.strip():
+            sanitized = prompt.strip()
+            if len(sanitized) > MAX_SYSTEM_PROMPT_CHARS:
+                sanitized = sanitized[:MAX_SYSTEM_PROMPT_CHARS]
+            state.system_prompt = sanitized
+            logger.info("session=%s system prompt stored (%d chars)", session_id, len(sanitized))
+            await send_json_safe(websocket, {"type": "info", "message": "Context received"})
+        else:
+            state.system_prompt = None
+            logger.info("session=%s system prompt cleared", session_id)
+            await send_json_safe(websocket, {"type": "info", "message": "Context cleared"})
     else:
         await send_json_safe(websocket, {"type": "error", "message": f"Unknown action: {action}"})
+
+
+async def wait_for_auth(websocket: WebSocket) -> str:
+    """Wait for and verify authentication token from WebSocket."""
+    while True:
+        msg = await websocket.receive()
+        if msg["type"] == "websocket.disconnect":
+            raise ValueError("WebSocket closed before authentication")
+        
+        if "text" in msg and msg["text"]:
+            try:
+                payload = json.loads(msg["text"])
+                if payload.get("type") == "auth":
+                    token = payload.get("token")
+                    if not token:
+                        raise ValueError("Token not provided in auth message")
+                    user_id = get_user_id_from_token(token)
+                    return user_id
+            except json.JSONDecodeError:
+                continue
+        elif "bytes" in msg and msg["bytes"]:
+            try:
+                payload = json.loads(msg["bytes"].decode("utf-8"))
+                if payload.get("type") == "auth":
+                    token = payload.get("token")
+                    if not token:
+                        raise ValueError("Token not provided in auth message")
+                    user_id = get_user_id_from_token(token)
+                    return user_id
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                continue
 
 
 @app.websocket("/ws/voice")
@@ -294,10 +380,67 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     # Clear any stored transcript from previous sessions
     glm_client.clear_last_transcript()
     
-    await send_json_safe(websocket, {"type": "info", "message": f"Connected: {session_id}"})
-    logger.info("Client connected: %s", session_id)
-
+    logger.info("Client connected: %s (waiting for authentication)", session_id)
+    
+    # Wait for authentication token
+    user_id: str | None = None
+    auth_timeout = 10.0  # 10 seconds to authenticate
+    auth_received = False
+    
     try:
+        # Wait for auth message with timeout
+        auth_task = asyncio.create_task(wait_for_auth(websocket))
+        try:
+            user_id = await asyncio.wait_for(auth_task, timeout=auth_timeout)
+            auth_received = True
+        except asyncio.TimeoutError:
+            await send_json_safe(websocket, {
+                "type": "error",
+                "message": "Authentication timeout. Please reconnect with a valid token."
+            })
+            await websocket.close(code=1008, reason="Authentication timeout")
+            return
+        except ValueError as e:
+            await send_json_safe(websocket, {
+                "type": "error",
+                "message": f"Authentication failed: {str(e)}"
+            })
+            await websocket.close(code=1008, reason="Authentication failed")
+            return
+        
+        if not user_id:
+            await send_json_safe(websocket, {
+                "type": "error",
+                "message": "Authentication failed: No user ID"
+            })
+            await websocket.close(code=1008, reason="Authentication failed")
+            return
+        
+        # Store user_id in session state
+        state.user_id = user_id
+        logger.info("Client authenticated: session=%s, user_id=%s", session_id, user_id)
+        
+        # Load conversation history from Firestore
+        try:
+            history_text = build_history_text(user_id)
+            state.history_text = history_text
+            logger.info("Loaded conversation history: %d chars", len(history_text))
+        except Exception as e:
+            logger.error("Failed to load conversation history: %s", e)
+            state.history_text = ""
+        
+        # Create new conversation document
+        try:
+            conversation_id = create_conversation(user_id)
+            state.conversation_id = conversation_id
+            logger.info("Created conversation: conversation_id=%s", conversation_id)
+        except Exception as e:
+            logger.error("Failed to create conversation: %s", e)
+            # Continue without conversation_id (conversation won't be saved)
+        
+        await send_json_safe(websocket, {"type": "info", "message": f"Authenticated: {user_id}"})
+        
+        # Now handle normal messages
         while True:
             msg = await websocket.receive()
             if msg["type"] == "websocket.disconnect":
@@ -312,6 +455,10 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
             payload = json.loads(raw_payload)
             msg_type = payload.get("type")
+            
+            # Skip auth messages (already handled)
+            if msg_type == "auth":
+                continue
             
             if msg_type == "audio_chunk":
                 await handle_audio_chunk(websocket, session_id, state, payload)

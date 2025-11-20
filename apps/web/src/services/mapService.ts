@@ -1,4 +1,5 @@
-import { mockSpots } from '@take-a-break/break-plans';
+import { mockSpots, type RelaxationSpot } from '@take-a-break/break-plans';
+import { browserMapService, type NearbyPlace } from './browserMapService';
 
 export type UserPosition = {
   lat: number;
@@ -33,8 +34,112 @@ export async function getUserPosition(): Promise<UserPosition> {
   }
 }
 
-export async function getNearbySpots() {
-  return mockSpots;
+const WALKING_SPEED_METERS_PER_MINUTE = 80;
+
+const CATEGORY_RULES: Array<{
+  match: (types: string[]) => boolean;
+  category: RelaxationSpot['category'];
+}> = [
+  {
+    match: (types) => types.some((type) => type.includes('park') || type.includes('trail')),
+    category: 'park'
+  },
+  {
+    match: (types) => types.some((type) => type.includes('cafe') || type.includes('coffee')),
+    category: 'cafe'
+  },
+  {
+    match: (types) => types.some((type) => type.includes('water') || type.includes('river')),
+    category: 'waterfront'
+  },
+  {
+    match: (types) => types.some((type) => type.includes('library') || type.includes('quiet')),
+    category: 'quiet_space'
+  }
+];
+
+function deriveCategory(types: string[]): RelaxationSpot['category'] {
+  const lowerTypes = types.map((type) => type.toLowerCase());
+
+  const matchedRule = CATEGORY_RULES.find((rule) => rule.match(lowerTypes));
+  return matchedRule ? matchedRule.category : 'indoor';
+}
+
+function deriveDuration(distanceMeters: number | undefined) {
+  const safeDistance = Number.isFinite(distanceMeters) ? (distanceMeters as number) : 400;
+  return Math.max(2, Math.round(safeDistance / WALKING_SPEED_METERS_PER_MINUTE));
+}
+
+function formatDescription(place: NearbyPlace) {
+  const fragments: string[] = [];
+
+  if (place.address) {
+    fragments.push(place.address);
+  }
+
+  if (place.isOpenNow !== undefined) {
+    fragments.push(place.isOpenNow ? 'Currently open' : 'May be closed');
+  }
+
+  if (place.rating) {
+    fragments.push(`Google rating ${place.rating.toFixed(1)}`);
+  }
+
+  return fragments.length > 0 ? fragments.join(' · ') : 'Nearby place suggested by map service.';
+}
+
+function normalizeAmenityTags(types: string[] = []) {
+  return types
+    .map((type) =>
+      type
+        .split('_')
+        .map((chunk) => chunk.trim())
+        .filter(Boolean)
+        .join(' ')
+    )
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
+function adaptNearbyPlace(place: NearbyPlace): RelaxationSpot {
+  const category = deriveCategory(place.types ?? []);
+  const description = formatDescription(place);
+  const distanceMeters = Number.isFinite(place.distanceMeters) ? place.distanceMeters : 400;
+
+  return {
+    id: place.id,
+    name: place.name,
+    category,
+    description,
+    amenityTags: normalizeAmenityTags(place.types ?? []),
+    distanceMeters,
+    durationMinutes: deriveDuration(distanceMeters),
+    coordinates: {
+      lat: place.lat,
+      lng: place.lng
+    }
+  };
+}
+
+export async function getNearbySpots(position?: UserPosition): Promise<RelaxationSpot[]> {
+  let resolvedPosition = position;
+
+  if (!resolvedPosition) {
+    resolvedPosition = await getUserPosition();
+  }
+
+  try {
+    const places = await browserMapService.getNearbyPlaces(resolvedPosition.lat, resolvedPosition.lng);
+
+    if (!places || places.length === 0) {
+      return mockSpots;
+    }
+
+    return places.map(adaptNearbyPlace);
+  } catch (error) {
+    console.warn('[mapService] Failed to load nearby places from API, falling back to mock data.', error);
+    return mockSpots;
+  }
 }
 
 export function getMockRoute(origin: UserPosition, destination: { lat: number; lng: number }): RoutePolyline {

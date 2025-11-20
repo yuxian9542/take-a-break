@@ -1,134 +1,100 @@
-# 快速启动指南 - 显示真实用户位置
+# Quick Start
 
-## 当前状态
+This guide walks you through the minimum steps required to get the web app showing live user locations backed by the Fastify API. Follow the sections in order; each builds on the previous one.
 
-✅ **已完成的修复**:
-1. 创建了 `.env` 环境配置文件
-2. 修复了 `pnpm-workspace.yaml` 配置，添加了 `services/*` 和 `infra/firebase`
-3. 添加了缺失的依赖（tsx, typescript）到 API 服务
-4. 安装了所有依赖
-5. 启动了 API 服务器（端口 3333）
-6. 修复了 ExplorePage 的 location 依赖问题
+---
 
-## 🚨 重要：你需要完成的步骤
+## 1. Prerequisites
 
-### 1. 配置 Google Maps API 密钥（必需）
+- **Node.js** ≥ 18.17 (v24 works too) and **pnpm** 8.x installed globally.
+- **Google Maps JavaScript API** key with the Maps JavaScript API enabled. See `SETUP_GOOGLE_MAPS.md` if you need a refresher.
+- (Optional) Python 3.11+ if you plan to run the voice backend later. This guide focuses on the API + web stack.
 
-当前地图无法显示是因为缺少 Google Maps API 密钥。
+---
 
-**步骤：**
+## 2. Configure Environment Files
 
-1. 打开 `.env` 文件（在项目根目录）
-2. 将以下三行的 `YOUR_GOOGLE_MAPS_API_KEY_HERE` 替换为你的实际 API 密钥：
+1. Copy the sample files:
+   ```bash
+   cp .env.example .env.local
+   cp apps/web/.env.example apps/web/.env.local
+   # Optional, only if you need the Expo app
+   cp apps/mobile/.env.example apps/mobile/.env.local
+   ```
+2. Edit the new `.env.local` files:
+   - `./.env.local`: set `GOOGLE_MAPS_API_KEY=<your-key>` (optional entries may stay as defaults).
+   - `apps/web/.env.local`: set `VITE_GOOGLE_MAPS_API_KEY=<your-key>`. Leave the other placeholders alone unless you know you need to change them.
+   - `apps/mobile/.env.local`: set `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=<your-key>` if you plan to run the mobile app.
+3. After editing `.env.local`, restart any running dev servers so Vite picks up the changes.
+
+> Tip: create the keys in Google Cloud Console → APIs & Services → Credentials. Enable **Maps JavaScript API** for the same project.
+
+---
+
+## 3. Install Dependencies
+
+From the repo root:
 
 ```bash
-GOOGLE_MAPS_API_KEY=你的API密钥
-VITE_GOOGLE_MAPS_API_KEY=你的API密钥
-EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=你的API密钥
+pnpm install
 ```
 
-**如何获取 API 密钥：**
+This wires up all workspaces (apps, packages, services, infra).
 
-1. 访问 https://console.cloud.google.com/
-2. 创建项目或选择现有项目
-3. 启用 "Maps JavaScript API"
-4. 在 "APIs & Services" > "Credentials" 中创建 API 密钥
-5. 复制 API 密钥并粘贴到 `.env` 文件
+---
 
-详细步骤请查看 `SETUP_GOOGLE_MAPS.md` 文件。
+## 4. Start the Services
 
-### 2. 重启 Web 开发服务器
+Use two terminals:
 
-修改 `.env` 文件后，需要重启 Vite 才能生效：
-
+### API (Fastify) server
 ```bash
-# 如果 Web 服务正在运行，先停止它 (Ctrl+C)
-# 然后重新启动：
-cd /Users/ming/Documents/take-a-break
-pnpm --filter @take-a-break/web dev
-```
-
-### 3. 授予浏览器位置权限
-
-1. 打开浏览器访问 `http://localhost:5174/explore`
-2. 当浏览器弹出位置权限请求时，点击 **"允许"**
-3. 等待几秒钟，地图应该会显示你的真实位置
-
-## 运行服务
-
-需要同时运行两个服务：
-
-### API 服务器（已启动 ✅）
-```bash
-# 在一个终端窗口中
-cd /Users/ming/Documents/take-a-break
 pnpm --filter @take-a-break/api dev
+# Runs on http://localhost:3333 by default
 ```
 
-### Web 应用
+### Web client
 ```bash
-# 在另一个终端窗口中
-cd /Users/ming/Documents/take-a-break
 pnpm --filter @take-a-break/web dev
+# Visit http://localhost:5174/explore
 ```
 
-然后访问: http://localhost:5174/explore
+Grant the browser location permission when prompted on the `/explore` page. Once the permission is accepted and the Google Maps key is valid, the map centers on your real location.
 
-## 问题排查
+---
 
-### 地图仍然显示 "Loading map..."
+## 5. Troubleshooting Checklist
 
-**原因：** Google Maps API 密钥未设置或无效
+| Symptom | Likely Cause | Fix |
+| --- | --- | --- |
+| Map stuck on “Loading map…” | Missing/invalid Google Maps key | Re-check `apps/web/.env.local`, confirm the Maps JavaScript API is enabled, restart Vite |
+| Browser shows `ERR_CONNECTION_REFUSED` fetching API routes | API server not running | Start the API process with `pnpm --filter @take-a-break/api dev` |
+| Browser never asks for location | Permission previously denied | Click the lock icon in the browser address bar → set Location to “Allow” → refresh |
+| Console logs “Network location provider at 'https://www.googleapis.com/' ...” | Browser fallback, not an error | Ignore; it disappears once permission is granted |
+| `pnpm dev` complains about missing `.env.local` | No env files | Copy from the `.env.example` files as described above |
 
-**解决方案：**
-1. 检查 `.env` 文件中的 `VITE_GOOGLE_MAPS_API_KEY` 是否设置
-2. 确认 API 密钥在 Google Cloud Console 中已启用 "Maps JavaScript API"
-3. 重启 Web 开发服务器（修改 `.env` 后必须重启）
-4. 打开浏览器开发者工具（F12），查看 Console 中的错误信息
+---
 
-### 显示 "ERR_CONNECTION_REFUSED"
+## 6. Reference Changes (already in repo)
 
-**原因：** API 服务器未运行
+- `.env.local` – added for root services (populate with your own secrets).
+- `pnpm-workspace.yaml` – includes `services/*` and `infra/firebase`.
+- `services/api/package.json` – ensures `tsx`/`typescript` are available for the dev server.
+- `apps/web/src/pages/ExplorePage.tsx` – uses the location hook safely.
+- `SETUP_GOOGLE_MAPS.md` – deep dive on API key creation and restrictions.
 
-**解决方案：**
-```bash
-cd /Users/ming/Documents/take-a-break
-pnpm --filter @take-a-break/api dev
-```
+You shouldn’t need to modify these unless you are extending the system.
 
-### 位置权限被拒绝
+---
 
-**解决方案：**
-1. 点击浏览器地址栏左侧的锁形图标
-2. 找到"位置"权限，设置为"允许"
-3. 刷新页面
+## 7. Next Steps
 
-### "Network location provider" 错误
+1. Confirm the `/explore` map shows your actual location.
+2. Commit your `.env.local` changes **to your machine only**; do not check them in.
+3. When you’re ready to use the voice agent, run the provided shell scripts (`services/voice/web_agent/setup.sh` once, then `./start_backend.sh` and `./start_frontend.sh`) instead of manually invoking commands—they set up the correct env and validation.
+4. Continue with the voice backend or mobile setup if needed (see `services/voice/web_agent/README.md` and `apps/mobile/README.md`).
 
-这是正常的！浏览器尝试使用 Google 的位置服务作为备用方案。只要你授予了位置权限，浏览器会使用设备的 GPS。
-
-## 文件变更总结
-
-修改的文件：
-- ✅ `.env` - 创建了环境配置文件（需要你填入 API 密钥）
-- ✅ `pnpm-workspace.yaml` - 添加了 services 和 firebase 包
-- ✅ `services/api/package.json` - 添加了 tsx 和 typescript 依赖
-- ✅ `apps/web/src/pages/ExplorePage.tsx` - 修复了 location 依赖问题
-- 📄 `SETUP_GOOGLE_MAPS.md` - 详细的 Google Maps 设置指南
-- 📄 `QUICK_START.md` - 本文件
-
-## 已知问题
-
-- Google Maps 免费额度限制：每月 28,000 次地图加载。对于开发足够了。
-- react-day-picker 的 peer dependency 警告：不影响功能，可以忽略。
-
-## 下一步
-
-1. **立即操作**：在 `.env` 文件中设置 Google Maps API 密钥
-2. **重启服务**：重启 Web 开发服务器
-3. **测试**：在浏览器中访问 explore 页面并授予位置权限
-
-需要帮助？查看 `SETUP_GOOGLE_MAPS.md` 获取详细的设置说明。
-
-
-
+Need more detail? Consult:
+- `SETUP_GOOGLE_MAPS.md` for API key creation.
+- `START_TUNNEL.md` if you must expose the API.
+- `VOICE_INTEGRATION_GUIDE.md` for the voice agent.

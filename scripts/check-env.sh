@@ -5,24 +5,29 @@
 echo "🔍 检查 Google Maps API 配置..."
 echo ""
 
-# 检查 .env 文件是否存在
-if [ ! -f .env ]; then
-  echo "❌ 未找到 .env 文件"
-  echo ""
-  echo "请创建 .env 文件并添加以下内容："
-  echo ""
-  echo "GOOGLE_MAPS_API_KEY=你的API密钥"
-  echo "USE_REAL_MAP_API=true"
-  echo ""
-  exit 1
+# 检查 .env.local 文件是否存在
+ENV_FILE=".env.local"
+if [ ! -f "$ENV_FILE" ]; then
+  if [ -f ".env" ]; then
+    ENV_FILE=".env"
+  else
+    echo "❌ 未找到 .env 或 .env.local 文件"
+    echo ""
+    echo "请创建 .env.local 文件并添加以下内容："
+    echo ""
+    echo "GOOGLE_MAPS_API_KEY=你的API密钥"
+    echo "USE_REAL_MAP_API=true"
+    echo ""
+    exit 1
+  fi
 fi
 
-echo "✅ .env 文件存在"
+echo "✅ $ENV_FILE 文件存在"
 echo ""
 
 # 检查 GOOGLE_MAPS_API_KEY
-if grep -q "GOOGLE_MAPS_API_KEY=" .env; then
-  API_KEY=$(grep "GOOGLE_MAPS_API_KEY=" .env | cut -d '=' -f 2)
+if grep -q "GOOGLE_MAPS_API_KEY=" "$ENV_FILE"; then
+  API_KEY=$(grep "GOOGLE_MAPS_API_KEY=" "$ENV_FILE" | cut -d '=' -f 2)
   if [ -z "$API_KEY" ] || [ "$API_KEY" = "你的API密钥" ]; then
     echo "⚠️  GOOGLE_MAPS_API_KEY 未设置或使用了占位符"
     echo "   当前值: $API_KEY"
@@ -35,8 +40,8 @@ else
 fi
 
 # 检查 USE_REAL_MAP_API
-if grep -q "USE_REAL_MAP_API=" .env; then
-  USE_REAL=$(grep "USE_REAL_MAP_API=" .env | cut -d '=' -f 2)
+if grep -q "USE_REAL_MAP_API=" "$ENV_FILE"; then
+  USE_REAL=$(grep "USE_REAL_MAP_API=" "$ENV_FILE" | cut -d '=' -f 2)
   if [ "$USE_REAL" = "true" ]; then
     echo "✅ USE_REAL_MAP_API=true"
   else
@@ -47,9 +52,9 @@ else
 fi
 
 echo ""
-echo "📋 .env 文件内容预览："
+echo "📋 $ENV_FILE 文件内容预览："
 echo "---"
-grep -v "^#" .env | grep -v "^$" | head -10
+grep -v "^#" "$ENV_FILE" | grep -v "^$" | head -10
 echo "---"
 echo ""
 
@@ -68,6 +73,5 @@ fi
 
 echo ""
 echo "完成检查！"
-
 
 

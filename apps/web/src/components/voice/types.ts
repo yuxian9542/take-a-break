@@ -2,6 +2,10 @@
 
 export type ClientMessage =
   | {
+      type: "auth";
+      token: string;
+    }
+  | {
       type: "audio_chunk";
       chunkId: string;
       data: string; // base64 encoded PCM16
@@ -10,6 +14,11 @@ export type ClientMessage =
       type: "control";
       action: "set_language";
       language: "zh" | "en" | null; // null = auto-detect
+    }
+  | {
+      type: "control";
+      action: "set_system_prompt";
+      prompt: string;
     };
 
 export type ServerMessage =

@@ -31,7 +31,8 @@ sleep 2
 echo ""
 echo "🌐 创建公网隧道..."
 echo ""
-cloudflared tunnel --url http://localhost:8080
+# cloudflared tunnel --url http://localhost:8080
+cloudflared tunnel --protocol http2 --url http://localhost:8080
 
 wait
 

@@ -2,6 +2,7 @@ import { ClientMessage, ServerMessage } from "./types";
 
 export type VoiceWsClientOptions = {
   url?: string;
+  idToken?: string;
   onOpen?: () => void;
   onClose?: (event: CloseEvent) => void;
   onError?: (event: Event) => void;
@@ -11,6 +12,7 @@ export type VoiceWsClientOptions = {
 export class VoiceWsClient {
   private socket: WebSocket | null = null;
   private readonly options: VoiceWsClientOptions;
+  private tokenSent: boolean = false;
 
   constructor(options: VoiceWsClientOptions = {}) {
     this.options = options;
@@ -47,6 +49,14 @@ export class VoiceWsClient {
     this.socket.binaryType = "arraybuffer";
 
     this.socket.addEventListener("open", () => {
+      // Send authentication token as first message if provided
+      if (this.options.idToken && !this.tokenSent) {
+        this.socket?.send(JSON.stringify({
+          type: "auth",
+          token: this.options.idToken
+        }));
+        this.tokenSent = true;
+      }
       this.options.onOpen?.();
     });
 
@@ -71,6 +81,7 @@ export class VoiceWsClient {
   disconnect() {
     this.socket?.close();
     this.socket = null;
+    this.tokenSent = false;
   }
 
   send(message: ClientMessage) {

@@ -10,9 +10,11 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@react-google-maps/api": "^2.20.0",
     "@take-a-break/api-client": "workspace:*",
     "@take-a-break/map": "workspace:*",
     "@take-a-break/ui": "workspace:*",
+    "firebase": "^12.6.0",
     "lucide-react": "^0.487.0",
     "lucide-react-native": "^0.553.0",
     "react": "^19.1.0",
@@ -24,13 +26,14 @@
     "@take-a-break/break-plans": "workspace:*"
   },
   "devDependencies": {
+    "@take-a-break/config": "workspace:*",
     "@testing-library/react": "^16.0.0",
     "@types/react": "~19.1.10",
     "@types/react-dom": "~19.1.5",
     "@vitejs/plugin-react-swc": "^3.7.0",
     "jsdom": "^27.2.0",
+    "tsx": "^4.20.6",
     "vite": "^6.0.0",
     "vitest": "^2.0.5"
   }
 }
-

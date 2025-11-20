@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PcmPlayer } from "./player";
 import { MicRecorder } from "./recorder";
 import { VoiceWsClient } from "./wsClient";
+import { getCurrentUser, getIdToken, onAuthStateChange } from "../../services/auth";
 import "./VoiceChat.css";
 
 function uuid(): string {
@@ -19,15 +20,18 @@ interface Message {
 
 interface VoiceChatProps {
   wsUrl: string;
+  systemPrompt?: string;
 }
 
-export function VoiceChat({ wsUrl }: VoiceChatProps) {
+export function VoiceChat({ wsUrl, systemPrompt }: VoiceChatProps) {
   const [isActive, setIsActive] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentUserText, setCurrentUserText] = useState<string>("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [user, setUser] = useState(getCurrentUser());
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const wsRef = useRef<VoiceWsClient | null>(null);
   const recorderRef = useRef<MicRecorder | null>(null);
@@ -35,6 +39,8 @@ export function VoiceChat({ wsUrl }: VoiceChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const shouldStopSendingRef = useRef(false);
   const isPlayingRef = useRef<boolean>(false);
+  const systemPromptRef = useRef<string | null>(systemPrompt?.trim() ? systemPrompt.trim() : null);
+  const lastSentPromptRef = useRef<string | null>(null);
 
   // Auto-scroll messages
   useEffect(() => {
@@ -49,18 +55,101 @@ export function VoiceChat({ wsUrl }: VoiceChatProps) {
     };
   }, []);
 
+  const endChat = useCallback(() => {
+    if (!isActive) return;
+
+    // Stop recording
+    stopRecording();
+    
+    // Stop audio playback
+    playerRef.current?.resetSchedule();
+    setIsSpeaking(false);
+    
+    // Close WebSocket
+    wsRef.current?.disconnect();
+    wsRef.current = null;
+    
+    // Clear state
+    setIsActive(false);
+    setMessages([]);
+    setCurrentUserText("");
+    isPlayingRef.current = false;
+    lastSentPromptRef.current = null;
+    
+    console.log("Chat ended");
+  }, [isActive]);
+
+  // Monitor auth state
+  useEffect(() => {
+    const unsubscribe = onAuthStateChange((currentUser) => {
+      setUser(currentUser);
+      if (!currentUser && isActive) {
+        // User signed out, end chat
+        endChat();
+      }
+    });
+    return unsubscribe;
+  }, [isActive, endChat]);
+
+  useEffect(() => {
+    const trimmed = systemPrompt?.trim() ?? null;
+    systemPromptRef.current = trimmed && trimmed.length > 0 ? trimmed : null;
+
+    if (!systemPromptRef.current) {
+      lastSentPromptRef.current = null;
+      return;
+    }
+
+    const client = wsRef.current;
+    if (client && client.isConnected() && lastSentPromptRef.current !== systemPromptRef.current) {
+      try {
+        client.send({
+          type: "control",
+          action: "set_system_prompt",
+          prompt: systemPromptRef.current
+        });
+        lastSentPromptRef.current = systemPromptRef.current;
+      } catch (err) {
+        console.error("Failed to send updated system prompt.", err);
+      }
+    }
+  }, [systemPrompt]);
+
   const startChat = useCallback(async () => {
     if (isActive) return;
 
+    // Check authentication
+    if (!user) {
+      setAuthError("Please sign in to start a voice chat");
+      return;
+    }
+
     setConnectionError(null);
+    setAuthError(null);
+
+    // Get ID token for authentication
+    const idToken = await getIdToken();
+    if (!idToken) {
+      setAuthError("Failed to get authentication token. Please sign in again.");
+      return;
+    }
 
     // Connect WebSocket
     const client = new VoiceWsClient({
       url: wsUrl,
+      idToken: idToken,
       onOpen: () => {
         console.log("WebSocket connected");
         // Set language to auto-detect (null)
         client.send({ type: "control", action: "set_language", language: null });
+        if (systemPromptRef.current) {
+          client.send({
+            type: "control",
+            action: "set_system_prompt",
+            prompt: systemPromptRef.current
+          });
+          lastSentPromptRef.current = systemPromptRef.current;
+        }
         setMessages([]);
         setCurrentUserText("");
         setConnectionError(null);
@@ -69,6 +158,7 @@ export function VoiceChat({ wsUrl }: VoiceChatProps) {
         console.log("WebSocket closed");
         setIsActive(false);
         stopRecording();
+        lastSentPromptRef.current = null;
       },
       onMessage: (msg) => {
         if (msg.type === "reply_audio_chunk") {
@@ -153,12 +243,16 @@ export function VoiceChat({ wsUrl }: VoiceChatProps) {
 
       const recorder = new MicRecorder({
         onChunk: (base64Chunk) => {
-          if (!shouldStopSendingRef.current) {
-            wsRef.current?.send({
-              type: "audio_chunk",
-              chunkId: uuid(),
-              data: base64Chunk
-            });
+          if (!shouldStopSendingRef.current && wsRef.current?.isConnected()) {
+            try {
+              wsRef.current?.send({
+                type: "audio_chunk",
+                chunkId: uuid(),
+                data: base64Chunk
+              });
+            } catch (err) {
+              // WebSocket not connected, ignore
+            }
           }
         },
         onError: (err) => console.error("Recorder error:", err)
@@ -174,35 +268,12 @@ export function VoiceChat({ wsUrl }: VoiceChatProps) {
       setConnectionError("Failed to access microphone. Please grant permission.");
       client.disconnect();
     }
-  }, [isActive, wsUrl]);
+  }, [isActive, wsUrl, user]);
 
   const stopRecording = () => {
     recorderRef.current?.stop();
     recorderRef.current = null;
   };
-
-  const endChat = useCallback(() => {
-    if (!isActive) return;
-
-    // Stop recording
-    stopRecording();
-    
-    // Stop audio playback
-    playerRef.current?.resetSchedule();
-    setIsSpeaking(false);
-    
-    // Close WebSocket
-    wsRef.current?.disconnect();
-    wsRef.current = null;
-    
-    // Clear state
-    setIsActive(false);
-    setMessages([]);
-    setCurrentUserText("");
-    isPlayingRef.current = false;
-    
-    console.log("Chat ended");
-  }, [isActive]);
 
   return (
     <div className="voice-chat">
@@ -234,6 +305,11 @@ export function VoiceChat({ wsUrl }: VoiceChatProps) {
           {connectionError && (
             <div className="voice-error-message">
               {connectionError}
+            </div>
+          )}
+          {authError && (
+            <div className="voice-error-message">
+              {authError}
             </div>
           )}
           {messages.map((msg, idx) => {

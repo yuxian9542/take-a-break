@@ -1,21 +1,21 @@
 #!/bin/bash
 # 配置环境变量以支持 Cloudflare Tunnel
 
-ENV_FILE="/Users/ming/Documents/take-a-break/.env"
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ENV_FILE="$ROOT_DIR/.env.local"
 
 echo "🔧 配置 Cloudflare Tunnel 环境变量..."
 echo ""
 
-# 检查 .env 文件是否存在
+# 检查环境文件是否存在
 if [ ! -f "$ENV_FILE" ]; then
-    echo "❌ .env 文件不存在"
-    echo "   正在创建..."
+    echo "⚠️  $ENV_FILE 文件不存在，正在创建..."
     touch "$ENV_FILE"
 fi
 
 # 备份原文件
 cp "$ENV_FILE" "$ENV_FILE.backup"
-echo "✅ 已备份原文件到 .env.backup"
+echo "✅ 已备份原文件到 ${ENV_FILE##*/}.backup"
 
 # 读取当前的 Google Maps API Key
 CURRENT_MAPS_KEY=$(grep "^VITE_GOOGLE_MAPS_API_KEY=" "$ENV_FILE" | cut -d'=' -f2)
@@ -47,7 +47,6 @@ echo ""
 echo "📝 新的配置："
 cat "$ENV_FILE"
 echo ""
-echo "⚠️  重要：修改 .env 后需要重启前端服务才能生效！"
+echo "⚠️  重要：修改 .env.local 后需要重启前端服务才能生效！"
 echo ""
-
 

@@ -25,7 +25,7 @@ This is a **fully standalone** package for the GLM-4-Voice real-time chat demo.
 ✅ **Documentation**
 - `QUICKSTART.md` - 3-step quick start guide
 - `README.md` - Full documentation
-- `env.example` - Environment variable template
+- `.env.example` - Environment variable template
 
 ✅ **Dependencies**
 - `requirements.txt` - Python dependencies
@@ -41,7 +41,7 @@ simple/                          # 👈 Standalone package root
 ├── QUICKSTART.md                # 3-step guide
 ├── README.md                    # Full documentation
 ├── requirements.txt             # Python dependencies
-├── env.example                  # Environment template
+├── .env.example                 # Environment template
 ├── .gitignore                   # Git ignore rules
 │
 ├── backend/                     # Backend code
@@ -74,7 +74,7 @@ simple/                          # 👈 Standalone package root
 🚀 **Quick Setup**
 ```bash
 ./setup.sh                    # Setup everything
-# Edit .env with your API key
+# Edit .env.local with your API key
 ./start_backend.sh            # Terminal 1
 ./start_frontend.sh           # Terminal 2
 ```
@@ -103,4 +103,3 @@ This package can be:
 - Used as a template for new projects
 
 All without any external dependencies from the parent directory!
-

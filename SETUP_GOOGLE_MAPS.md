@@ -27,18 +27,26 @@
 
 ### 2. 配置环境变量
 
-打开项目根目录的 `.env` 文件，将 API 密钥填入以下位置:
+先将示例文件复制为本地配置：
+
+```bash
+cp .env.example .env.local
+cp apps/web/.env.example apps/web/.env.local
+cp apps/mobile/.env.example apps/mobile/.env.local    # 如果需要 Expo
+```
+
+然后将 API 密钥填入对应文件：
 
 ```bash
 # 替换 YOUR_GOOGLE_MAPS_API_KEY_HERE 为你的实际 API 密钥
-GOOGLE_MAPS_API_KEY=YOUR_API_KEY_HERE
-VITE_GOOGLE_MAPS_API_KEY=YOUR_API_KEY_HERE
-EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=YOUR_API_KEY_HERE
+./.env.local -> GOOGLE_MAPS_API_KEY=YOUR_API_KEY_HERE
+apps/web/.env.local -> VITE_GOOGLE_MAPS_API_KEY=YOUR_API_KEY_HERE
+apps/mobile/.env.local -> EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=YOUR_API_KEY_HERE
 ```
 
 ### 3. 启用真实地图数据 (可选)
 
-如果你启用了 Places API 和 Directions API，可以使用真实的地图数据而不是 mock 数据:
+如果你启用了 Places API 和 Directions API，可以在根目录的 `.env.local` 中启用真实的地图数据:
 
 ```bash
 USE_REAL_MAP_API=true
@@ -71,10 +79,10 @@ pnpm --filter @take-a-break/web dev
 **原因**: Google Maps API 密钥未设置或无效
 
 **解决方案**:
-1. 检查 `.env` 文件中的 `VITE_GOOGLE_MAPS_API_KEY` 是否正确设置
+1. 检查 `apps/web/.env.local` 文件中的 `VITE_GOOGLE_MAPS_API_KEY` 是否正确设置
 2. 在浏览器开发者工具的 Console 中查看错误信息
 3. 确认 API 密钥在 Google Cloud Console 中启用了 Maps JavaScript API
-4. 重启 Vite 开发服务器 (修改 `.env` 后需要重启)
+4. 重启 Vite 开发服务器 (修改 `.env.local` 后需要重启)
 
 ### API 请求失败 (ERR_CONNECTION_REFUSED)
 
@@ -125,9 +133,6 @@ Google Maps API 有免费额度:
 ## 安全建议
 
 1. **不要**将 API 密钥提交到 git 仓库
-2. `.env` 文件已经在 `.gitignore` 中，确保不会被提交
+2. `.env*` 文件（包括 `.env.local`）已经在 `.gitignore` 中，确保不会被提交
 3. 为开发环境设置 API 密钥限制 (HTTP referrers)
 4. 生产环境使用单独的 API 密钥，并设置更严格的限制
-
-
-

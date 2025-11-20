@@ -21,8 +21,8 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # Configure API key
-cp env.example .env
-# Edit .env: GLM_API_KEY=your_key_here
+cp .env.example .env.local
+# Edit .env.local: GLM_API_KEY=your_key_here
 
 # Start backend
 cd backend

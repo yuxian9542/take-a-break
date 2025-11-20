@@ -23,10 +23,10 @@ cp -r simple/ /path/to/destination/
 ```bash
 # Create a zip file
 cd voice_call
-zip -r glm4-voice-demo.zip simple/ -x "simple/venv/*" -x "simple/frontend/node_modules/*" -x "simple/.env" -x "simple/backend/__pycache__/*"
+zip -r glm4-voice-demo.zip simple/ -x "simple/venv/*" -x "simple/frontend/node_modules/*" -x "simple/.env.local" -x "simple/backend/__pycache__/*"
 
 # Or create a tar.gz
-tar -czf glm4-voice-demo.tar.gz simple/ --exclude="simple/venv" --exclude="simple/frontend/node_modules" --exclude="simple/.env" --exclude="simple/backend/__pycache__"
+tar -czf glm4-voice-demo.tar.gz simple/ --exclude="simple/venv" --exclude="simple/frontend/node_modules" --exclude="simple/.env.local" --exclude="simple/backend/__pycache__"
 ```
 
 ### Method 3: Git Repository
@@ -44,12 +44,12 @@ git push -u origin main
 **Always exclude** (already in .gitignore):
 - `venv/` - Virtual environment (recreate with setup.sh)
 - `frontend/node_modules/` - Node packages (recreate with npm install)
-- `.env` - API keys (user must create their own)
+- `.env.local` - API keys (user must create their own)
 - `backend/__pycache__/` - Python cache
 - `*.log` - Log files
 
 **Include these important files**:
-- `env.example` - Template for .env
+- `.env.example` - Template for .env.local
 - All `.sh` scripts
 - All `.md` documentation
 - `requirements.txt`
@@ -73,8 +73,8 @@ cd simple
 ./setup.sh
 
 # 4. Configure
-cp env.example .env
-# Edit .env and add GLM_API_KEY
+cp .env.example .env.local
+# Edit .env.local and add GLM_API_KEY
 
 # 5. Run
 ./start_backend.sh    # Terminal 1
@@ -154,7 +154,7 @@ cd simple
 
 # Check structure
 ls -la
-# Should see: backend/, frontend/, *.sh, *.md, requirements.txt, env.example
+# Should see: backend/, frontend/, *.sh, *.md, requirements.txt, .env.example
 
 # Check backend
 ls backend/
@@ -166,4 +166,3 @@ ls frontend/
 ```
 
 All scripts use relative paths, so they work from any installation location! 🚀
-

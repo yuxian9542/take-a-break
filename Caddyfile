@@ -1,4 +1,4 @@
-0.0.0.0:8080 {
+:8080 {
 	# API 后端代理
 	handle /api/* {
 		reverse_proxy localhost:3333

@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import './styles/global.css';
+import './config/firebase'; // Initialize Firebase
 
 const container = document.getElementById('root');
 

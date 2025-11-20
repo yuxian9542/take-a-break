@@ -1,0 +1,43 @@
+name: web-app
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/web/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+      - 'package.json'
+      - '.github/workflows/web.yml'
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+      - 'package.json'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 8.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Lint & type-check shared packages
+        run: pnpm --filter @take-a-break/ui lint && pnpm --filter @take-a-break/map lint
+      - name: Test web app
+        run: pnpm --filter @take-a-break/web test
+      - name: Build web bundle
+        run: pnpm --filter @take-a-break/web build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: apps/web/dist

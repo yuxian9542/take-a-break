@@ -14,9 +14,15 @@ from vad import VadState
 class SessionState:
     pcm_buffer: List[bytes] = field(default_factory=list)
     vad_state: VadState = field(default_factory=VadState)
+    # User ID from Firebase authentication
+    user_id: Optional[str] = None
+    # Firestore conversation document ID
+    conversation_id: Optional[str] = None
     # Text-based conversation history for multi-turn
     # Format: "User: hello\nAssistant: hi\nUser: how are you?\nAssistant: ..."
     history_text: str = ""
+    # System prompt derived from client context (e.g., location snapshot)
+    system_prompt: Optional[str] = None
     # Language for Whisper ASR: 'zh' (Chinese), 'en' (English), or None (auto-detect)
     language: Optional[str] = None
     # Pending user transcript from current turn (from Whisper ASR)

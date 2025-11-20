@@ -1,8 +1,13 @@
+import 'tsx/esm';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'node:path';
 
+const { loadWebClientEnv } = await import('@take-a-break/config');
+
 const reactNativeShim = path.resolve(__dirname, './src/shims/react-native.ts');
+
+loadWebClientEnv({ envDir: __dirname });
 
 const config = {
   plugins: [react()],
