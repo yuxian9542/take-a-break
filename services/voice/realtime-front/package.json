@@ -1,0 +1,30 @@
+{
+  "name": "realtime",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --mode prod",
+    "build:stage": "vite build --mode stage",
+    "build:pre": "vite build --mode pre",
+    "build:prod": "vite build --mode prod",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "element-plus": "^2.9.5",
+    "lodash-es": "^4.17.21",
+    "mitt": "^3.0.1",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0",
+    "wavesurfer.js": "^7.9.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "esbuild": "^0.27.0",
+    "less": "^4.2.2",
+    "vite": "^6.2.1"
+  },
+  "engines": {
+    "node": ">=20.19.4"
+  }
+}
