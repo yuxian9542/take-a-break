@@ -32,6 +32,18 @@ cd realtime-front
 pnpm install
 ```
 
+### 配置环境变量
+项目运行依赖于 Vite 风格的环境变量。建议在项目根目录创建 `.env.local` 文件（或在你偏好的 `.env.*` 文件中），并根据实际情况填写以下配置：
+```bash
+VITE_GLM_API_KEY=xxxx
+VITE_APP_DOMAIN=wss://open.bigmodel.cn
+VITE_APP_PROXY_PATH=/api/paas
+```
+
+- `VITE_GLM_API_KEY`：智谱大模型平台申请的实时语音接口密钥。
+- `VITE_APP_DOMAIN`：实时服务的 WebSocket 接入域名，默认为智谱开放平台地址。
+- `VITE_APP_PROXY_PATH`：后端代理路径，用于转发与鉴权请求。
+
 ### 运行项目
 ```bash
 pnpm run dev
