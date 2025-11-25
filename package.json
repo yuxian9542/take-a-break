@@ -4,13 +4,8 @@
   "private": true,
   "packageManager": "pnpm@8.15.4",
   "scripts": {
-    "dev:api": "pnpm --filter @take-a-break/api dev",
     "build": "pnpm -r run build",
-    "lint": "pnpm -r run lint",
-    "sim:location:nyc": "./scripts/set-simulator-location.sh nyc",
-    "sim:location:sf": "./scripts/set-simulator-location.sh sf",
-    "test:map-api": "bash scripts/test-map-api.sh",
-    "check:env": "bash scripts/check-env.sh"
+    "lint": "pnpm -r run lint"
   },
   "devDependencies": {
     "@types/node": "^20.11.19",
@@ -18,10 +13,7 @@
     "typescript": "^5.3.3"
   },
   "workspaces": [
-    "apps/*",
-    "packages/*",
-    "services/*",
-    "infra/*"
+    "services/*"
   ],
   "engines": {
     "node": ">=18.17.0"
