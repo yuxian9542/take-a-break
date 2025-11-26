@@ -188,6 +188,7 @@ export default {
       currentSessionId: null, // 当前会话ID
       sessions: [], // 会话列表
       isHistoryMode: false, // 是否是历史记录模式（只显示文本，不显示音频）
+      sessionCache: {}, // 会话缓存 { sessionId: messages[] }
     };
   },
   watch: {
@@ -712,6 +713,23 @@ export default {
         console.error('Error loading sessions:', error);
       }
     },
+    // 预加载所有会话消息（后台静默加载）
+    async preloadAllSessions() {
+      const userId = this.getUserId();
+      if (!userId || this.sessions.length === 0) return;
+
+      // 并行加载所有会话（静默，不阻塞UI）
+      this.sessions.forEach(async (session) => {
+        if (!this.sessionCache[session.id]) {
+          try {
+            const messages = await loadSession(userId, session.id);
+            this.sessionCache[session.id] = messages;
+          } catch (error) {
+            console.error('Error preloading session:', session.id, error);
+          }
+        }
+      });
+    },
     // 切换到指定会话
     async switchSession(sessionId) {
       if (!sessionId || sessionId === this.currentSessionId) return;
@@ -725,13 +743,21 @@ export default {
         
         // 清空当前消息列表
         this.clearObjectURL();
-        this.messageList = [];
-
-        // 加载会话消息
-        const messages = await loadSession(userId, sessionId);
-        this.messageList = messages;
+        
+        // 设置状态
         this.currentSessionId = sessionId;
-        this.isHistoryMode = true; // 设置为历史记录模式
+        this.isHistoryMode = true;
+
+        // 检查缓存 - 有缓存直接用，无延迟
+        if (this.sessionCache[sessionId]) {
+          this.messageList = this.sessionCache[sessionId];
+        } else {
+          // 从 Firebase 加载
+          this.messageList = [];
+          const messages = await loadSession(userId, sessionId);
+          this.sessionCache[sessionId] = messages; // 缓存
+          this.messageList = messages;
+        }
 
         // 滚动到底部
         this.$nextTick(() => {
@@ -759,6 +785,9 @@ export default {
 
       try {
         await deleteSession(userId, sessionId);
+        
+        // 清除缓存
+        delete this.sessionCache[sessionId];
         
         // 如果删除的是当前会话，创建新会话
         if (sessionId === this.currentSessionId) {
@@ -866,11 +895,11 @@ export default {
     this.isConnecting = false;
     // User needs to click connect button to start
     
-    // Load sessions list and create initial session if needed
+    // Load sessions list
     await this.loadSessionsList();
-    if (!this.currentSessionId) {
-      await this.createNewSession();
-    }
+    
+    // 后台预加载所有会话消息（不阻塞UI）
+    this.preloadAllSessions();
   },
 };
 </script>
