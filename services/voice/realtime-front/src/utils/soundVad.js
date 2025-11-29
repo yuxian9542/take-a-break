@@ -74,15 +74,53 @@ class SoundVadClass {
 
   // 开启声音监听
   async startListen({ isClientVad = true }) {
-    // 获取用户媒体流
-    const [err, stream] = await awaitTo(
-      getUserMedia({
-        audio: true
-      })
-    )
+    // 获取用户媒体流 with proper iOS-compatible constraints
+    const constraints = {
+      audio: {
+        echoCancellation: true,       // Request AEC
+        noiseSuppression: true,       // Request noise suppression
+        autoGainControl: true,        // Request AGC
+        voiceIsolation: true,         // iOS 17+ voice isolation
+        channelCount: 1,              // Mono channel
+        sampleRate: 48000,            // Safari is fine with 48k, better compatibility
+      },
+      video: false
+    }
+    
+    const [err, stream] = await awaitTo(getUserMedia(constraints))
     if (err) {
       this._handlePermissionError() // 获取权限失败
       return
+    }
+    
+    // Debug: Verify Safari/iOS honored the constraints we requested
+    const [track] = stream.getAudioTracks()
+    const settings = track.getSettings()
+    console.debug('[SoundVad] Mic settings after getUserMedia:', settings)
+    console.debug('[SoundVad] Echo cancellation:', settings.echoCancellation)
+    console.debug('[SoundVad] Noise suppression:', settings.noiseSuppression)
+    console.debug('[SoundVad] Auto gain control:', settings.autoGainControl)
+    console.debug('[SoundVad] Voice isolation:', settings.voiceIsolation)
+    
+    // Try to re-apply constraints if they weren't honored (iOS Safari quirk)
+    if (settings.echoCancellation !== true) {
+      try {
+        await track.applyConstraints({ echoCancellation: true })
+        console.debug('[SoundVad] Re-applied echoCancellation constraint')
+      } catch (applyErr) {
+        console.warn('[SoundVad] Could not apply echoCancellation constraint:', applyErr)
+      }
+    }
+    
+    // Try to apply voiceIsolation if supported (iOS 17+)
+    if (settings.voiceIsolation !== true) {
+      try {
+        await track.applyConstraints({ voiceIsolation: true })
+        console.debug('[SoundVad] Re-applied voiceIsolation constraint')
+      } catch (applyErr) {
+        // voiceIsolation might not be supported on older iOS versions - this is OK
+        console.debug('[SoundVad] voiceIsolation not supported or already applied:', applyErr.message)
+      }
     }
     let inputBuffer = null // 原始通道数据
     const bufferSize = isClientVad ? 4096 : 2048 // 缓冲区大小

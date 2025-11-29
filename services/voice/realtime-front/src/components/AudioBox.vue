@@ -256,6 +256,24 @@ export default {
         });
         this.waveSurfer.on("ready", (duration) => {
           this.readyState = true;
+          
+          // iOS-specific audio settings to prevent echo
+          const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
+                        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+          
+          if (isIOS) {
+            // Set remote audio volume for iOS (0.75 as suggested)
+            try {
+              const mediaElement = this.waveSurfer.getMediaElement();
+              if (mediaElement) {
+                mediaElement.volume = 0.75;
+                console.debug('[AudioBox] Set iOS remote audio volume to 0.75');
+              }
+            } catch (err) {
+              console.warn('[AudioBox] Could not set iOS audio volume:', err);
+            }
+          }
+          
           this.$emit("ready", duration);
         });
         this.waveSurfer.on("play", () => {
