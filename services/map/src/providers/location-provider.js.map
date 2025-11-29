@@ -1,1 +1,0 @@
-{"version":3,"file":"location-provider.js","sourceRoot":"","sources":["location-provider.ts"],"names":[],"mappings":"AAOA,MAAM,OAAO,qBAAsB,SAAQ,KAAK;IACD;IAA7C,YAAY,OAAe,EAAkB,MAA6B;QACxE,KAAK,CAAC,OAAO,CAAC,CAAC;QAD4B,WAAM,GAAN,MAAM,CAAuB;QAExE,IAAI,CAAC,IAAI,GAAG,uBAAuB,CAAC;IACtC,CAAC;CACF"}

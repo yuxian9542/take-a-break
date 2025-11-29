@@ -4,22 +4,20 @@
   "private": true,
   "packageManager": "pnpm@8.15.4",
   "scripts": {
-    "dev:web": "pnpm --filter @take-a-break/web dev",
-    "dev:voice-backend": "cd services/voice/web_agent && ./start_backend.sh",
-    "dev:all": "concurrently \"pnpm dev:web\" \"pnpm dev:voice-backend\" --names \"web,voice\" --prefix-colors \"cyan,magenta\"",
-    "build:web": "pnpm --filter @take-a-break/web build",
-    "test:web": "pnpm --filter @take-a-break/web test"
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r run lint",
+    "sim:location:nyc": "./scripts/set-simulator-location.sh nyc",
+    "sim:location:sf": "./scripts/set-simulator-location.sh sf",
+    "test:map-api": "bash scripts/test-map-api.sh",
+    "check:env": "bash scripts/check-env.sh"
   },
   "devDependencies": {
-    "@take-a-break/config": "workspace:*",
     "@types/node": "^20.11.19",
-    "concurrently": "^8.2.2",
-    "tsx": "^4.7.0",
+    "tsx": "^4.7.1",
     "typescript": "^5.3.3"
   },
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "services/*"
   ],
   "engines": {
     "node": ">=18.17.0"
