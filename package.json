@@ -4,7 +4,6 @@
   "private": true,
   "packageManager": "pnpm@8.15.4",
   "scripts": {
-    "dev:api": "pnpm --filter @take-a-break/api dev",
     "build": "pnpm -r run build",
     "lint": "pnpm -r run lint",
     "sim:location:nyc": "./scripts/set-simulator-location.sh nyc",
@@ -18,10 +17,7 @@
     "typescript": "^5.3.3"
   },
   "workspaces": [
-    "apps/*",
-    "packages/*",
-    "services/*",
-    "infra/*"
+    "services/*"
   ],
   "engines": {
     "node": ">=18.17.0"
