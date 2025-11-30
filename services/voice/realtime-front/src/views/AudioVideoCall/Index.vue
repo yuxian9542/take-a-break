@@ -1,6 +1,7 @@
 <template>
   <div class="experience">
     <ChatHistorySidebar
+      ref="chatHistorySidebar"
       :sessions="sessions"
       :currentSessionId="currentSessionId"
       :userId="getUserId()"
@@ -13,6 +14,13 @@
         <div class="app-container">
           <div class="app-header flex flex-between">
             <div class="app-header__titles">
+              <button 
+                class="mobile-menu-btn" 
+                @click="toggleSidebar"
+                v-if="isMobile"
+              >
+                <span class="icon">☰</span>
+              </button>
               <p class="eyebrow">Voice Companion</p>
               <h3>Voice Call</h3>
             </div>
@@ -121,6 +129,7 @@ export default {
       messageList: [], // 消息列表
       isConnecting: false, // 是否正在连接
       isConnected: false, // 是否已连接
+      isMobile: typeof window !== 'undefined' && window.innerWidth <= 768, // Mobile detection
       // 右侧参数面板参数对象
       panelParams: {
         model: "", // 模型
@@ -466,6 +475,17 @@ Bad: long analytical explanations.
     },
   },
   methods: {
+    // Toggle sidebar on mobile
+    toggleSidebar() {
+      const sidebar = this.$refs.chatHistorySidebar;
+      if (sidebar) {
+        if (sidebar.isMobileVisible) {
+          sidebar.closeMobile();
+        } else {
+          sidebar.openMobile();
+        }
+      }
+    },
     // 服务响应返回输出方式
     responseTypeChange(value) {
       this.responseType = value;
@@ -1146,6 +1166,12 @@ Bad: long analytical explanations.
     this.isConnecting = false;
     // User needs to click connect button to start
     
+    // Check mobile on mount and add resize listener
+    this.isMobile = window.innerWidth <= 768;
+    window.addEventListener('resize', () => {
+      this.isMobile = window.innerWidth <= 768;
+    });
+    
     // Load sessions list
     await this.loadSessionsList();
     
@@ -1212,6 +1238,33 @@ Bad: long analytical explanations.
     letter-spacing: 0.5px;
     text-transform: uppercase;
   }
+  
+  .mobile-menu-btn {
+    display: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--va-soft-border);
+    background: #fff;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-right: 12px;
+    transition: all 0.2s ease;
+    
+    @media (max-width: 768px) {
+      display: flex;
+    }
+    
+    &:hover {
+      background: var(--va-muted-surface);
+    }
+    
+    .icon {
+      font-size: 20px;
+      color: var(--va-text-main);
+    }
+  }
 }
 
 .status-badge {
@@ -1263,6 +1316,73 @@ Bad: long analytical explanations.
   .app-container {
     max-width: 100%;
     min-height: 640px;
+  }
+}
+
+// Mobile styles (iPhone and small screens)
+@media (max-width: 768px) {
+  .experience {
+    padding: 8px;
+    gap: 12px;
+    position: relative;
+    
+    // Hide sidebar by default on mobile, show as overlay when needed
+    :deep(.chat-history-sidebar) {
+      position: fixed;
+      left: -280px;
+      top: 0;
+      bottom: 0;
+      z-index: 1000;
+      transition: left 0.3s ease;
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+      
+      &.mobile-visible {
+        left: 0;
+      }
+    }
+  }
+  
+  .app-container {
+    max-width: 100%;
+    min-height: auto;
+    padding: 12px 12px 0;
+    border-radius: 24px;
+  }
+  
+  .experience__content {
+    width: 100%;
+  }
+  
+  .experience__panel {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .experience {
+    padding: 4px;
+  }
+  
+  .app-container {
+    padding: 8px 8px 0;
+    border-radius: 16px;
+    min-height: calc(100vh - 16px);
+  }
+  
+  .app-header {
+    padding: 4px 4px 2px;
+    h3 {
+      font-size: 18px;
+    }
+  }
+  
+  .content-wrapper {
+    padding: 4px;
+  }
+  
+  .input-container {
+    padding: 4px 4px 12px;
   }
 }
 </style>

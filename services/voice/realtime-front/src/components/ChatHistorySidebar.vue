@@ -1,17 +1,25 @@
 <template>
-  <div class="chat-history-sidebar" :class="{ collapsed: isCollapsed }">
-    <div class="sidebar-header">
-      <button class="toggle-btn" @click="isCollapsed = !isCollapsed" v-if="!isCollapsed">
+  <div>
+    <!-- Mobile overlay backdrop - moved outside sidebar -->
+    <div class="mobile-backdrop" v-if="isMobileVisible" @click="closeMobile"></div>
+    
+    <div class="chat-history-sidebar" :class="{ collapsed: isCollapsed, 'mobile-visible': isMobileVisible }">
+      <div class="sidebar-header">
+      <button class="toggle-btn" @click="isCollapsed = !isCollapsed" v-if="!isCollapsed && !isMobile">
         <span class="icon">‹</span>
       </button>
-      <button class="toggle-btn" @click="isCollapsed = !isCollapsed" v-else>
+      <button class="toggle-btn" @click="isCollapsed = !isCollapsed" v-else-if="isCollapsed && !isMobile">
         <span class="icon">›</span>
       </button>
       <h3 v-if="!isCollapsed" class="sidebar-title">Chat History</h3>
+      <!-- Mobile close button -->
+      <button class="mobile-close-btn" @click="closeMobile" v-if="isMobileVisible">
+        <span class="icon">×</span>
+      </button>
     </div>
 
     <div v-if="!isCollapsed" class="sidebar-content">
-      <button class="new-chat-btn" @click="$emit('new-session')">
+      <button class="new-chat-btn" @click="handleNewSession">
         <span class="icon">+</span>
         <span>New Chat</span>
       </button>
@@ -22,7 +30,7 @@
           :key="session.id"
           class="session-item"
           :class="{ active: session.id === currentSessionId }"
-          @click="$emit('session-selected', session.id)"
+          @click="handleSessionClick(session.id)"
         >
           <div class="session-content">
             <h4 class="session-title">{{ session.title }}</h4>
@@ -44,6 +52,7 @@
           <p class="hint">Start a conversation to see it here</p>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </template>
@@ -68,9 +77,46 @@ export default {
   data() {
     return {
       isCollapsed: false,
+      isMobileVisible: false,
+      isMobile: false,
     };
   },
+  mounted() {
+    // Check if mobile on mount
+    this.checkMobile();
+    window.addEventListener('resize', this.checkMobile);
+  },
+  beforeUnmount() {
+    window.removeEventListener('resize', this.checkMobile);
+  },
   methods: {
+    checkMobile() {
+      // Show sidebar expanded on mobile when visible
+      this.isMobile = window.innerWidth <= 768;
+      if (this.isMobile) {
+        this.isCollapsed = false;
+      }
+    },
+    handleSessionClick(sessionId) {
+      this.$emit('session-selected', sessionId);
+      // Close mobile sidebar after selection
+      if (this.isMobile) {
+        this.closeMobile();
+      }
+    },
+    handleNewSession() {
+      this.$emit('new-session');
+      // Close mobile sidebar after creating new session
+      if (this.isMobile) {
+        this.closeMobile();
+      }
+    },
+    closeMobile() {
+      this.isMobileVisible = false;
+    },
+    openMobile() {
+      this.isMobileVisible = true;
+    },
     formatTime(timestamp) {
       if (!timestamp) return '';
       
@@ -93,6 +139,17 @@ export default {
 </script>
 
 <style scoped lang="less">
+.mobile-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  pointer-events: auto;
+}
+
 .chat-history-sidebar {
   width: 280px;
   background: var(--va-card-bg);
@@ -100,11 +157,29 @@ export default {
   box-shadow: var(--va-shadow-soft);
   display: flex;
   flex-direction: column;
-  transition: width 0.3s ease;
+  transition: width 0.3s ease, left 0.3s ease;
   overflow: hidden;
+  position: relative; // Add relative positioning for z-index context
 
   &.collapsed {
     width: 60px;
+  }
+  
+  // Mobile styles
+  @media (max-width: 768px) {
+    width: 280px;
+    border-radius: 0;
+    height: 100vh;
+    position: fixed;
+    left: -280px;
+    top: 0;
+    z-index: 1000; // Higher than backdrop
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+    pointer-events: auto; // Ensure sidebar can receive clicks
+    
+    &.mobile-visible {
+      left: 0;
+    }
   }
 }
 
@@ -114,6 +189,7 @@ export default {
   gap: 12px;
   padding: 16px;
   border-bottom: 1px solid var(--va-soft-border);
+  position: relative;
 
   .toggle-btn {
     width: 32px;
@@ -137,6 +213,10 @@ export default {
       line-height: 1;
       display: inline-block;
     }
+    
+    @media (max-width: 768px) {
+      display: none; // Hide collapse button on mobile
+    }
   }
 
   .sidebar-title {
@@ -145,6 +225,35 @@ export default {
     font-weight: 700;
     color: var(--va-text-main);
   }
+  
+  .mobile-close-btn {
+    position: absolute;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--va-soft-border);
+    background: #fff;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    
+    @media (max-width: 768px) {
+      display: flex;
+    }
+    
+    &:hover {
+      background: var(--va-muted-surface);
+    }
+    
+    .icon {
+      font-size: 24px;
+      font-weight: 400;
+      color: var(--va-text-main);
+    }
+  }
 }
 
 .sidebar-content {
@@ -152,6 +261,9 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+  z-index: 1001; // Ensure content is above backdrop
+  pointer-events: auto; // Ensure clicks work
 }
 
 .new-chat-btn {
