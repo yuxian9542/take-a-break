@@ -259,7 +259,7 @@ export default {
           
           // iOS-specific audio settings to prevent echo
           const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
-                        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                        (/Mac/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
           
           if (isIOS) {
             // Set remote audio volume for iOS (0.75 as suggested)
