@@ -3,8 +3,15 @@ import {
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged as firebaseOnAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
 import { auth } from '@/config/firebase';
+
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+  prompt: 'select_account',
+});
 
 /**
  * Sign in with email and password
@@ -24,6 +31,14 @@ export const signIn = (email, password) => {
  */
 export const signUp = (email, password) => {
   return createUserWithEmailAndPassword(auth, email, password);
+};
+
+/**
+ * Sign in with Google OAuth popup
+ * @returns {Promise<UserCredential>}
+ */
+export const signInWithGoogle = () => {
+  return signInWithPopup(auth, googleProvider);
 };
 
 /**

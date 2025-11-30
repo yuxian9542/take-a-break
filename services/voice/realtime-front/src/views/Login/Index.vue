@@ -69,6 +69,19 @@
         </el-form-item>
       </el-form>
 
+      <div class="oauth-divider">
+        <span>or continue with</span>
+      </div>
+      <el-button
+        class="google-button"
+        plain
+        size="large"
+        :loading="googleLoading"
+        @click="handleGoogleSignIn"
+      >
+        Continue with Google
+      </el-button>
+
       <div class="toggle-mode">
         <span>{{ isSignUp ? 'Already have an account?' : "Don't have an account?" }}</span>
         <el-link type="primary" @click="toggleMode">
@@ -82,7 +95,7 @@
 <script>
 import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
-import { signIn, signUp } from '@/utils/auth';
+import { signIn, signUp, signInWithGoogle } from '@/utils/auth';
 
 export default {
   name: 'Login',
@@ -91,6 +104,7 @@ export default {
     const formRef = ref(null);
     const isSignUp = ref(false);
     const loading = ref(false);
+    const googleLoading = ref(false);
     const errorMessage = ref('');
 
     const form = reactive({
@@ -161,8 +175,8 @@ export default {
           await signIn(form.email, form.password);
         }
 
-        // Redirect to home page after successful authentication
-        const redirect = router.currentRoute.value.query.redirect || '/';
+        // Redirect to conversation page after successful authentication
+        const redirect = router.currentRoute.value.query.redirect || '/conversation';
         router.push(redirect);
       } catch (error) {
         console.error('Authentication error:', error);
@@ -196,15 +210,33 @@ export default {
       }
     };
 
+    const handleGoogleSignIn = async () => {
+      try {
+        errorMessage.value = '';
+        googleLoading.value = true;
+        await signInWithGoogle();
+        const redirect = router.currentRoute.value.query.redirect || '/conversation';
+        router.push(redirect);
+      } catch (error) {
+        console.error('Google authentication error:', error);
+        errorMessage.value =
+          error.message || 'Google authentication failed. Please try again.';
+      } finally {
+        googleLoading.value = false;
+      }
+    };
+
     return {
       formRef,
       form,
       rules,
       isSignUp,
       loading,
+      googleLoading,
       errorMessage,
       toggleMode,
       handleSubmit,
+      handleGoogleSignIn,
     };
   },
 };
@@ -283,5 +315,27 @@ export default {
 
 :deep(.el-input__wrapper) {
   box-shadow: 0 0 0 1px #dcdfe6 inset;
+}
+
+.oauth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 16px;
+  color: var(--va-text-sub);
+  font-size: 13px;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #ebeef5;
+  }
+}
+
+.google-button {
+  width: 100%;
+  margin-top: 12px;
 }
 </style>

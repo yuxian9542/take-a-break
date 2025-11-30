@@ -5,18 +5,6 @@
         <div class="welcome__orb"></div>
         <h3 class="welcome__title">How are you feeling?</h3>
         <p class="welcome__subtitle">Tap the mic to start a quick voice chat.</p>
-        <div class="suggestion-strip">
-          <button
-            v-for="(item, idx) in suggestions"
-            :key="idx"
-            type="button"
-            class="suggestion-chip"
-            @click="handlerClick(MEDIA_TYPE.AUDIO)"
-          >
-            <span class="suggestion-chip__title">{{ item.title }}</span>
-            <span class="suggestion-chip__desc">{{ item.desc }}</span>
-          </button>
-        </div>
       </div>
       <div v-else class="chat-shell">
         <div class="chat-area scroll-display-none" ref="refMsgBox" id="msgBox">
@@ -144,21 +132,12 @@ export default {
       MEDIA_TYPE, // 媒体类型
       userAvatar,
       robotAvatar,
-      suggestions: [
-        { title: "Future of E-Commerce", desc: "in 2030" },
-        { title: "Healthy Breakfast", desc: "in 10 minutes" },
-        { title: "Plan my schedule", desc: "for today" },
-      ],
     };
   },
   mounted() {
     emitter.on("onStopAudio", this.stopAudio);
   },
   methods: {
-    // 点击媒体类型
-    handlerClick(type) {
-      this.$emit("onClickMedia", type);
-    },
     // 当音频播放停止时
     async audioStopped() {
       await sleep(1000);
@@ -273,50 +252,6 @@ export default {
   color: var(--va-text-sub);
   font-size: 14px;
   line-height: 22px;
-}
-
-.suggestion-strip {
-  display: flex;
-  gap: 12px;
-  width: 100%;
-  overflow-x: auto;
-  padding: 8px 4px 4px;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  &::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-.suggestion-chip {
-  flex-shrink: 0;
-  min-width: 160px;
-  border-radius: 16px;
-  padding: 14px 16px;
-  border: 1px solid var(--va-soft-border);
-  background: var(--va-muted-surface);
-  color: var(--va-text-main);
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 6px 20px -12px rgba(0, 0, 0, 0.15);
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 30px -16px rgba(0, 0, 0, 0.2);
-  }
-}
-
-.suggestion-chip__title {
-  display: block;
-  font-weight: 600;
-  font-size: 14px;
-  margin-bottom: 2px;
-}
-
-.suggestion-chip__desc {
-  display: block;
-  color: var(--va-text-sub);
-  font-size: 12px;
 }
 
 .chat-shell {
