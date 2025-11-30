@@ -12,27 +12,32 @@
     <div class="experience__content">
       <div class="experience__conversation">
         <div class="app-container">
-          <div class="app-header flex flex-between">
-            <div class="app-header__titles">
-              <button 
-                class="mobile-menu-btn" 
-                @click="toggleSidebar"
-                v-if="isMobile"
-              >
-                <span class="icon">☰</span>
-              </button>
-              <p class="eyebrow">Voice Companion</p>
-              <h3>Voice Call</h3>
-            </div>
-            <span
-              class="status-badge"
-              :class="{
-                connected: isConnected,
-                connecting: isConnecting,
-              }"
+          <div class="app-header">
+            <button 
+              class="mobile-menu-btn" 
+              @click="toggleSidebar"
+              v-if="isMobile"
             >
-              {{ isConnecting ? "Connecting..." : isConnected ? "Live" : "Ready" }}
-            </span>
+              <span class="icon">☰</span>
+            </button>
+            <div class="app-header__center">
+              <span
+                class="status-badge"
+                :class="{
+                  connected: isConnected,
+                  connecting: isConnecting,
+                }"
+              >
+                {{ isConnecting ? "Connecting..." : isConnected ? "Live" : "Ready" }}
+              </span>
+            </div>
+            <button 
+              class="settings-btn" 
+              @click="toggleSettingsSidebar"
+              title="Settings"
+            >
+              <span class="icon">⚙</span>
+            </button>
           </div>
           <div class="content-wrapper">
             <MessageBox
@@ -65,8 +70,18 @@
           </div>
         </div>
       </div>
+      <SettingsSidebar
+        ref="settingsSidebar"
+        :modelId="panelParams.model"
+        :currentVoice="panelParams.voice"
+        :isConnected="isConnected"
+        @model-selected="handleModelSelected"
+        @voice-selected="handleVoiceSelected"
+      />
+      <!-- OperatorPanel hidden - replaced by SettingsSidebar -->
       <OperatorPanel
-        class="experience__panel"
+        v-if="false"
+        class="experience__panel operator-panel-hidden"
         :panelParams="panelParams"
         :isConnected="isConnected"
         :enableVideo="enableVideo"
@@ -91,6 +106,7 @@ import MessageBox from "./MessageBox.vue";
 import ToolBar from "./ToolBar.vue";
 import OperatorPanel from "./OperatorPanel.vue";
 import ChatHistorySidebar from "@/components/ChatHistorySidebar.vue";
+import SettingsSidebar from "@/components/SettingsSidebar.vue";
 import {
   MEDIA_TYPE,
   MSG_TYPE,
@@ -485,6 +501,25 @@ Bad: long analytical explanations.
           sidebar.openMobile();
         }
       }
+    },
+    // Toggle settings sidebar
+    toggleSettingsSidebar() {
+      const sidebar = this.$refs.settingsSidebar;
+      if (sidebar) {
+        if (sidebar.isMobileVisible) {
+          sidebar.closeMobile();
+        } else {
+          sidebar.openMobile();
+        }
+      }
+    },
+    // Handle model selection
+    handleModelSelected(value) {
+      this.panelParams.model = value;
+    },
+    // Handle voice selection
+    handleVoiceSelected(value) {
+      this.panelParams.voice = value;
     },
     // 服务响应返回输出方式
     responseTypeChange(value) {
@@ -1157,6 +1192,7 @@ Bad: long analytical explanations.
     ToolBar,
     OperatorPanel,
     ChatHistorySidebar,
+    SettingsSidebar,
   },
   async mounted() {
     // Show toolbar immediately for audio mode
@@ -1189,18 +1225,21 @@ Bad: long analytical explanations.
   display: flex;
   gap: 24px;
   &__content {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 420px;
+    display: flex;
     gap: 24px;
     height: 100%;
     flex: 1;
     min-width: 0;
+    position: relative;
+    justify-content: center;
   }
   &__conversation {
     display: flex;
     justify-content: center;
     align-items: stretch;
     min-width: 0;
+    flex: 1;
+    max-width: 100%;
   }
   &__panel {
     background: #fff;
@@ -1208,6 +1247,36 @@ Bad: long analytical explanations.
     box-shadow: var(--va-strong-shadow);
     overflow: hidden;
     min-width: 360px;
+  }
+  
+  // Hide OperatorPanel completely
+  .operator-panel-hidden {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    left: -9999px !important;
+    pointer-events: none !important;
+  }
+  
+  // Settings sidebar positioning
+  :deep(.settings-sidebar) {
+    @media (max-width: 768px) {
+      position: fixed;
+      right: -280px;
+      top: 0;
+      bottom: 0;
+      z-index: 1000;
+      transition: right 0.3s ease;
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+      
+      &.mobile-visible {
+        right: 0;
+      }
+    }
   }
 }
 
@@ -1225,21 +1294,14 @@ Bad: long analytical explanations.
 
 .app-header {
   padding: 8px 8px 4px;
+  display: flex;
   align-items: center;
-  h3 {
-    color: var(--va-text-main);
-    font-size: 22px;
-    margin: 4px 0 0;
-    font-weight: 700;
-  }
-  .eyebrow {
-    color: var(--va-text-sub);
-    font-size: 12px;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-  }
+  justify-content: center;
+  position: relative;
   
   .mobile-menu-btn {
+    position: absolute;
+    left: 0;
     display: none;
     width: 36px;
     height: 36px;
@@ -1249,12 +1311,41 @@ Bad: long analytical explanations.
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    margin-right: 12px;
     transition: all 0.2s ease;
     
     @media (max-width: 768px) {
       display: flex;
     }
+    
+    &:hover {
+      background: var(--va-muted-surface);
+    }
+    
+    .icon {
+      font-size: 20px;
+      color: var(--va-text-main);
+    }
+  }
+  
+  &__center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .settings-btn {
+    position: absolute;
+    right: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--va-soft-border);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
     
     &:hover {
       background: var(--va-muted-surface);
