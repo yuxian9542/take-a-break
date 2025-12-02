@@ -2,14 +2,11 @@
   <div class="message-box">
     <div v-if="!isConnecting" class="message-box__viewport">
       <div v-if="isShowWelcome" class="welcome">
-        <div class="welcome__orb"></div>
         <h3 class="welcome__title">How are you feeling?</h3>
-        <p class="welcome__subtitle">Tap the mic to start a quick voice chat.</p>
       </div>
       <div v-else class="chat-shell">
         <div class="chat-area scroll-display-none" ref="refMsgBox" id="msgBox">
           <div v-if="messageList.length === 0" class="empty-state">
-            <div class="welcome__orb small"></div>
             <h4>Voice Call Ready</h4>
             <p>Click the microphone button to start speaking</p>
           </div>
@@ -213,45 +210,10 @@ export default {
   gap: 12px;
 }
 
-.welcome__orb {
-  width: 110px;
-  height: 110px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #a5f3fc, #3b82f6, #4f46e5);
-  box-shadow: 0 0 40px rgba(59, 130, 246, 0.4);
-  margin-bottom: 8px;
-  animation: breathe 4s infinite ease-in-out;
-  position: relative;
-  &::after {
-    content: "";
-    position: absolute;
-    top: -12px;
-    left: -12px;
-    right: -12px;
-    bottom: -12px;
-    border-radius: 50%;
-    background: inherit;
-    filter: blur(24px);
-    opacity: 0.6;
-    z-index: -1;
-  }
-  &.small {
-    width: 70px;
-    height: 70px;
-    margin-bottom: 0;
-  }
-}
-
 .welcome__title {
   font-size: 22px;
   font-weight: 700;
   color: var(--va-text-main);
-}
-
-.welcome__subtitle {
-  color: var(--va-text-sub);
-  font-size: 14px;
-  line-height: 22px;
 }
 
 .chat-shell {
@@ -354,18 +316,6 @@ export default {
 
 :deep(.audio-box) {
   width: 100%;
-}
-
-@keyframes breathe {
-  0%,
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 40px rgba(59, 130, 246, 0.4);
-  }
-  50% {
-    transform: scale(1.08);
-    box-shadow: 0 0 60px rgba(59, 130, 246, 0.6);
-  }
 }
 
 @keyframes slideUp {

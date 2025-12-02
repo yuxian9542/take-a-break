@@ -1,8 +1,8 @@
 <template>
   <div class="tool-bar">
     <div v-if="currentBarStatus === toolBarStatus.DISCONNECTED" class="tool-bar__start">
-      <button class="tool-bar__start-btn" type="button" @click="clearAndConnect">
-        Start New Conversation
+      <button class="tool-bar__start-btn" type="button" @click.stop.prevent="clearAndConnect">
+        Start
       </button>
     </div>
     <div v-else class="tool-bar__inner">
@@ -294,11 +294,23 @@ export default {
       }
     },
     // 清除历史并重新连接
-    async clearAndConnect() {
-      this.$emit("onClearAndConnect");
+    clearAndConnect(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+      }
+      // Prevent multiple rapid clicks
+      if (this.disabledConnectTip) {
+        return;
+      }
       this.disabledConnectTip = true;
-      await sleep(1000);
-      this.disabledConnectTip = false;
+      // Emit immediately without delay
+      this.$emit("onClearAndConnect");
+      // Reset flag after a short delay to prevent rapid clicks
+      setTimeout(() => {
+        this.disabledConnectTip = false;
+      }, 500);
     },
   },
   beforeDestroy() {
@@ -312,25 +324,44 @@ export default {
   width: 100%;
   &__start {
     width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
   }
   &__start-btn {
-    width: 100%;
-    height: 48px;
-    border-radius: 20px;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
     border: none;
     background: linear-gradient(135deg, #0fcf6d, #0b8f50);
     color: #fff;
-    font-size: 15px;
+    font-size: 18px;
     font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 16px 40px -18px rgba(11, 143, 80, 0.55);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 8px 24px -8px rgba(11, 143, 80, 0.5);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    pointer-events: auto;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    position: relative;
+    z-index: 10;
     &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 18px 44px -18px rgba(11, 143, 80, 0.65);
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 0 12px 32px -8px rgba(11, 143, 80, 0.6);
     }
     &:active {
-      transform: translateY(0);
+      transform: translateY(0) scale(0.98);
+    }
+    &:focus {
+      outline: none;
+      box-shadow: 0 8px 24px -8px rgba(11, 143, 80, 0.5), 0 0 0 4px rgba(15, 207, 109, 0.2);
     }
   }
   &__inner {

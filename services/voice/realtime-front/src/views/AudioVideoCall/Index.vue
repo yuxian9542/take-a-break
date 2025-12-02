@@ -920,13 +920,21 @@ Bad: long analytical explanations.
     },
     // 工具条发起，清空消息并重新连接
     async clearAndConnect() {
+      // Immediate visual feedback
+      this.isConnecting = true;
       this.isFirstOpenMedia = true; // 重置首次打开媒体
       this.clearObjectURL(); // 清空残留对象url
       this.messageList = []; // 清空消息
-      this.isConnecting = false; // 确保连接状态重置
       this.isConnected = false; // 确保连接状态重置
-      // 创建新会话
-      await this.createNewSession();
+      
+      // Create session and open connection - don't block on session creation
+      this.createNewSession().then(() => {
+        // Session created, continue
+      }).catch(error => {
+        console.error('Error creating session:', error);
+      });
+      
+      // Open WebSocket immediately without waiting for session
       this.openWS(MEDIA_TYPE.AUDIO); // Always use audio mode
     },
     // 视频组件发起，打开视频或屏幕共享成功
