@@ -316,6 +316,29 @@ export default {
   box-shadow: 0 0 0 1px #dcdfe6 inset;
 }
 
+:deep(.el-button--primary) {
+  background-color: #5C9E7F;
+  border-color: #5C9E7F;
+  
+  &:hover {
+    background-color: #4d8a6d;
+    border-color: #4d8a6d;
+  }
+  
+  &:active {
+    background-color: #3d7a5d;
+    border-color: #3d7a5d;
+  }
+}
+
+:deep(.el-link--primary) {
+  color: #5C9E7F;
+  
+  &:hover {
+    color: #4d8a6d;
+  }
+}
+
 .oauth-divider {
   display: flex;
   align-items: center;

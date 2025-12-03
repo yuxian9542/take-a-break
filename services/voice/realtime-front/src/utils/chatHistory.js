@@ -59,6 +59,12 @@ export const saveMessage = async (userId, sessionId, message) => {
     return;
   }
 
+  // Validate message ID - Firestore document IDs must be non-empty strings
+  if (!message.id || typeof message.id !== 'string' || message.id.trim() === '') {
+    console.error('saveMessage: Invalid message ID', { messageId: message.id });
+    return;
+  }
+
   console.log('saveMessage: Starting save', { userId, sessionId, messageId: message.id, messageType: message.type });
 
   try {
@@ -66,20 +72,62 @@ export const saveMessage = async (userId, sessionId, message) => {
     const messageRef = doc(messagesRef, message.id || undefined);
     console.log('saveMessage: Message ref created', messageRef.id);
 
-    // Save message data (excluding blob URLs which won't persist)
+    // Validate and clean message data
+    // Firestore has a 1MB limit per document, so we need to limit audioData size
+    let audioData = message.audioData || [];
+    
+    // Calculate approximate size of audioData (base64 strings)
+    const audioDataSize = JSON.stringify(audioData).length;
+    const maxSize = 800000; // ~800KB to leave room for other fields (safety margin under 1MB)
+    
+    if (audioDataSize > maxSize) {
+      console.warn('saveMessage: audioData too large, truncating', { 
+        originalSize: audioDataSize, 
+        maxSize,
+        chunks: audioData.length 
+      });
+      // Keep only the last few chunks to stay under limit
+      // Estimate ~50KB per chunk, so keep last ~15 chunks
+      audioData = audioData.slice(-15);
+    }
+
+    // Clean blob URLs - they won't persist anyway, so convert to null
+    let audioUrl = message.audioUrl || null;
+    if (audioUrl && typeof audioUrl === 'string' && audioUrl.startsWith('blob:')) {
+      audioUrl = null; // Don't save blob URLs as they're temporary
+    }
+    
+    let videoUrlContent = message.videoUrlContent || null;
+    if (videoUrlContent && typeof videoUrlContent === 'string' && videoUrlContent.startsWith('blob:')) {
+      videoUrlContent = null; // Don't save blob URLs as they're temporary
+    }
+
+    // Ensure textContent is an array of strings
+    const textContent = Array.isArray(message.textContent) 
+      ? message.textContent.filter(item => typeof item === 'string')
+      : [];
+
+    // Save message data
     const messageData = {
-      id: message.id,
-      type: message.type,
-      textContent: message.textContent || [],
-      // audioUrl and videoUrlContent are blob URLs - store but they'll be empty on load
-      audioUrl: message.audioUrl || null,
-      videoUrlContent: message.videoUrlContent || null,
-      // audioData array (base64 chunks) - can be large
-      audioData: message.audioData || [],
+      id: message.id || '',
+      type: message.type || 'client',
+      textContent: textContent,
+      audioUrl: audioUrl,
+      videoUrlContent: videoUrlContent,
+      // Only save audioData if it's not too large
+      audioData: audioDataSize <= maxSize ? audioData : [],
       responseType: message.responseType || null,
       answerStatus: message.answerStatus || null,
       timestamp: serverTimestamp(),
     };
+
+    // Final size check before saving
+    const finalSize = JSON.stringify(messageData).length;
+    if (finalSize > 1000000) { // 1MB limit
+      console.error('saveMessage: Message data still too large after cleanup', { finalSize });
+      // Remove audioData completely if still too large
+      messageData.audioData = [];
+    }
 
     await setDoc(messageRef, messageData);
     console.log('saveMessage: Message document saved');
@@ -214,6 +262,27 @@ export const updateSessionTitle = async (userId, sessionId, title) => {
     });
   } catch (error) {
     console.error('Error updating session title:', error);
+  }
+};
+
+/**
+ * Check if a session has any messages
+ * @param {string} userId - User ID
+ * @param {string} sessionId - Session ID
+ * @returns {Promise<boolean>} True if session has messages
+ */
+export const sessionHasMessages = async (userId, sessionId) => {
+  if (!userId || !sessionId) {
+    return false;
+  }
+
+  try {
+    const messagesRef = collection(db, 'users', userId, 'sessions', sessionId, 'messages');
+    const querySnapshot = await getDocs(messagesRef);
+    return querySnapshot.size > 0;
+  } catch (error) {
+    console.error('Error checking session messages:', error);
+    return false;
   }
 };
 

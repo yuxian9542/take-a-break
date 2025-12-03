@@ -5,54 +5,53 @@
     
     <div class="chat-history-sidebar" :class="{ collapsed: isCollapsed, 'mobile-visible': isMobileVisible }">
       <div class="sidebar-header">
-      <button class="toggle-btn" @click="isCollapsed = !isCollapsed" v-if="!isCollapsed && !isMobile">
-        <span class="icon">‹</span>
-      </button>
-      <button class="toggle-btn" @click="isCollapsed = !isCollapsed" v-else-if="isCollapsed && !isMobile">
-        <span class="icon">›</span>
-      </button>
-      <h3 v-if="!isCollapsed" class="sidebar-title">Chat History</h3>
-      <!-- Mobile close button -->
-      <button class="mobile-close-btn" @click="closeMobile" v-if="isMobileVisible">
-        <span class="icon">×</span>
-      </button>
-    </div>
-
-    <div v-if="!isCollapsed" class="sidebar-content">
-      <button class="new-chat-btn" @click="handleNewSession">
-        <span class="icon">+</span>
-        <span>New Chat</span>
-      </button>
-
-      <div class="sessions-list">
-        <div
-          v-for="session in sessions"
-          :key="session.id"
-          class="session-item"
-          :class="{ active: session.id === currentSessionId }"
-          @click="handleSessionClick(session.id)"
-        >
-          <div class="session-content">
-            <h4 class="session-title">{{ session.title }}</h4>
-            <p class="session-time" v-if="session.updatedAt">
-              {{ formatTime(session.updatedAt) }}
-            </p>
-          </div>
-          <button
-            class="delete-btn"
-            @click.stop="$emit('delete-session', session.id)"
-            v-if="session.id !== currentSessionId"
-          >
-            <span class="icon">×</span>
+        <button class="toggle-btn" @click="isCollapsed = !isCollapsed" v-if="!isCollapsed && !isMobile">
+          <span class="icon">‹</span>
+        </button>
+        <button class="toggle-btn" @click="isCollapsed = !isCollapsed" v-else-if="isCollapsed && !isMobile">
+          <span class="icon">›</span>
+        </button>
+        <div v-if="!isCollapsed" class="header-content">
+          <h1 class="sidebar-title">Chat History</h1>
+          <button class="new-chat-btn" @click="handleNewSession">
+            + New Chat
           </button>
         </div>
+      </div>
 
-        <div v-if="sessions.length === 0" class="empty-state">
-          <p>No chat history yet</p>
-          <p class="hint">Start a conversation to see it here</p>
+      <div v-if="!isCollapsed" class="sidebar-content">
+        <div class="sessions-list">
+          <div
+            v-for="(session, index) in sessions"
+            :key="session.id"
+            class="session-item"
+            :class="{ active: session.id === currentSessionId }"
+            @click="handleSessionClick(session.id)"
+          >
+            <div class="session-avatar" v-if="index === 0">
+              <div class="avatar-circle"></div>
+            </div>
+            <div class="session-content">
+              <h4 class="session-title">{{ session.title }}</h4>
+            </div>
+            <div class="session-time" v-if="session.updatedAt">
+              {{ formatTime(session.updatedAt) }}
+            </div>
+            <button
+              class="delete-btn"
+              @click.stop="$emit('delete-session', session.id)"
+              v-if="session.id !== currentSessionId"
+            >
+              <span class="icon">×</span>
+            </button>
+          </div>
+
+          <div v-if="sessions.length === 0" class="empty-state">
+            <p>No chat history yet</p>
+            <p class="hint">Start a conversation to see it here</p>
+          </div>
         </div>
       </div>
-    </div>
     </div>
   </div>
 </template>
@@ -184,10 +183,7 @@ export default {
 }
 
 .sidebar-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
+  padding: 24px 20px;
   border-bottom: 1px solid var(--va-soft-border);
   position: relative;
 
@@ -202,6 +198,7 @@ export default {
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
+    margin-bottom: 16px;
 
     &:hover {
       background: var(--va-muted-surface);
@@ -219,41 +216,50 @@ export default {
     }
   }
 
+  .header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+  }
+
   .sidebar-title {
     margin: 0;
     font-size: 18px;
     font-weight: 700;
     color: var(--va-text-main);
+    line-height: 1.2;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  
-  .mobile-close-btn {
-    position: absolute;
-    right: 16px;
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    border: 1px solid var(--va-soft-border);
-    background: #fff;
-    display: none;
-    align-items: center;
-    justify-content: center;
+
+  .new-chat-btn {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: none;
+    background: #5C9E7F;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
-    
-    @media (max-width: 768px) {
-      display: flex;
-    }
-    
+    white-space: nowrap;
+    flex-shrink: 0;
+
     &:hover {
-      background: var(--va-muted-surface);
+      background: #4d8a6d;
+      transform: translateY(-1px);
     }
-    
-    .icon {
-      font-size: 24px;
-      font-weight: 400;
-      color: var(--va-text-main);
+
+    &:active {
+      transform: translateY(0);
     }
   }
+  
 }
 
 .sidebar-content {
@@ -266,56 +272,29 @@ export default {
   pointer-events: auto; // Ensure clicks work
 }
 
-.new-chat-btn {
-  margin: 12px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  border: 1px solid var(--va-soft-border);
-  background: linear-gradient(135deg, #0fcf6d, #0b8f50);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 12px -4px rgba(11, 143, 80, 0.4);
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 16px -4px rgba(11, 143, 80, 0.5);
-  }
-
-      .icon {
-        font-size: 18px;
-      }
-}
-
 .sessions-list {
   flex: 1;
   overflow-y: auto;
-  padding: 0 12px 12px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 12px;
 }
 
 .session-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
+  gap: 12px;
+  padding: 16px;
   border-radius: 12px;
-  border: 1px solid transparent;
+  border: none;
   cursor: pointer;
   transition: all 0.2s ease;
-  background: #fff;
+  background: #E8EBED;
+  position: relative;
 
   &:hover {
-    background: var(--va-muted-surface);
-    border-color: var(--va-soft-border);
+    background: #DDE1E4;
 
     .delete-btn {
       opacity: 1;
@@ -323,8 +302,24 @@ export default {
   }
 
   &.active {
-    background: linear-gradient(135deg, rgba(15, 207, 109, 0.1), rgba(11, 143, 80, 0.05));
-    border-color: rgba(15, 207, 109, 0.3);
+    background: #DDE1E4;
+  }
+
+  .session-avatar {
+    flex-shrink: 0;
+  }
+
+  .avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #9CA3AF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 600;
+    font-size: 16px;
   }
 
   .session-content {
@@ -333,9 +328,9 @@ export default {
   }
 
   .session-title {
-    margin: 0 0 4px 0;
-    font-size: 14px;
-    font-weight: 600;
+    margin: 0;
+    font-size: 15px;
+    font-weight: 500;
     color: var(--va-text-main);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -343,9 +338,11 @@ export default {
   }
 
   .session-time {
-    margin: 0;
-    font-size: 12px;
-    color: var(--va-text-sub);
+    font-size: 13px;
+    color: #9CA3AF;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-left: auto;
   }
 
   .delete-btn {
@@ -360,16 +357,17 @@ export default {
     cursor: pointer;
     opacity: 0;
     transition: all 0.2s ease;
+    flex-shrink: 0;
 
     &:hover {
-      background: rgba(241, 52, 58, 0.1);
+      background: rgba(0, 0, 0, 0.1);
     }
 
-      .icon {
-        font-size: 18px;
-        color: #f1343a;
-        font-weight: 400;
-      }
+    .icon {
+      font-size: 18px;
+      color: #1F2937;
+      font-weight: 400;
+    }
   }
 }
 

@@ -51,10 +51,12 @@
                 <template v-else>
                   <OutputAudio
                     v-if="item.responseType === RESPONSE_TYPE.AUDIO"
+                    :key="item.id"
                     ref="refOutputAudio"
                     :readonly="true"
                     :options="item.audioData"
                     :status="item.answerStatus"
+                    :outputType="OUTPUT_TYPE.MP3"
                     @onStopped="audioStopped"
                   />
                   <p
@@ -82,7 +84,7 @@ import AudioBox from "@/components/AudioBox.vue";
 import OutputAudio from "@/components/OutputAudio.vue";
 import userAvatar from "@/assets/images/user.svg";
 import robotAvatar from "@/assets/images/robot_color.png";
-import { MEDIA_TYPE, MSG_TYPE, RESPONSE_TYPE } from "@/constants/modules/audioVideoCall";
+import { MEDIA_TYPE, MSG_TYPE, RESPONSE_TYPE, OUTPUT_TYPE } from "@/constants/modules/audioVideoCall";
 import { sleep } from "@/utils/tools";
 import {
   listenWheel,
@@ -127,6 +129,7 @@ export default {
       RESPONSE_TYPE, // 响应类型
       MSG_TYPE, // 消息类型
       MEDIA_TYPE, // 媒体类型
+      OUTPUT_TYPE, // 输出类型
       userAvatar,
       robotAvatar,
     };

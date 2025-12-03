@@ -3,13 +3,7 @@
     <div class="app-container welcome-card">
       <header class="header">
         <div class="header-left">
-          <div class="app-subtitle">
-            <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16zm-1-13h2v6h-2zm0 8h2v2h-2z" />
-            </svg>
-            AI Voice Assistant
-          </div>
-          <div class="app-title">Voice Companion</div>
+          <div class="app-title">Vently</div>
         </div>
         <div class="header-right">
           <div class="status-badge ready">
@@ -53,16 +47,6 @@
             </button>
           </div>
         </div>
-      </div>
-
-      <div class="bottom-interaction-area">
-        <button class="talk-btn" type="button" @click="startChat()">
-          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-          </svg>
-          Start a conversation
-        </button>
-        <div class="hint-text">Tap to begin a voice chat with AI</div>
       </div>
     </div>
   </div>
@@ -112,17 +96,8 @@ const startChat = (prompt) => {
   gap: 4px;
 }
 
-.app-subtitle {
-  font-size: 0.85rem;
-  color: var(--text-sub);
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
 .app-title {
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 600;
   color: var(--text-main);
   letter-spacing: -0.5px;
@@ -192,7 +167,7 @@ const startChat = (prompt) => {
   height: 140px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  background: #5C9E7F;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -210,7 +185,7 @@ const startChat = (prompt) => {
   left: -20px;
   right: -20px;
   bottom: -20px;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, rgba(255, 255, 255, 0) 70%);
+  background: radial-gradient(circle, rgba(92, 158, 127, 0.2) 0%, rgba(255, 255, 255, 0) 70%);
   z-index: -1;
   border-radius: 50%;
 }
@@ -300,44 +275,6 @@ const startChat = (prompt) => {
 }
 
 .card-desc {
-  font-size: 0.85rem;
-  color: var(--text-sub);
-}
-
-.bottom-interaction-area {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 20px 24px;
-  background: var(--card-bg);
-  padding-bottom: max(30px, env(safe-area-inset-bottom));
-  border-top: 1px solid #f3f4f6;
-}
-
-.talk-btn {
-  width: 100%;
-  height: 56px;
-  border-radius: 28px;
-  border: none;
-  background: #22c55e;
-  color: white;
-  font-size: 1.1rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
-}
-
-.talk-btn:active {
-  transform: scale(0.98);
-}
-
-.hint-text {
   font-size: 0.85rem;
   color: var(--text-sub);
 }
