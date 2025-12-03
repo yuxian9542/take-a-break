@@ -95,9 +95,36 @@ export default {
   },
   watch: {
     options: {
-      handler(val) {
+      handler(val, oldVal) {
         if (this.outputType === OUTPUT_TYPE.MP3) {
-          this.audioDataList = val;
+          // Append new chunks instead of replacing the entire array
+          if (val && val.length > 0) {
+            // Check if this is a new chunk (different from what we already have)
+            const existingLength = this.audioDataList.length;
+            if (val.length > existingLength) {
+              // Append only the new chunks
+              for (let i = existingLength; i < val.length; i++) {
+                if (val[i]?.data) {
+                  this.audioDataList.push({ data: val[i].data });
+                  console.log(`options: Appended chunk ${i} to audioDataList, total chunks: ${this.audioDataList.length}`);
+                }
+              }
+              // If we're waiting for more chunks (playIndex < audioDataList.length), continue playing
+              // This handles the case where onFinish was called but no next chunk was available yet
+              if (this.playIndex < this.audioDataList.length && this.autoplay && !this.isPlaying) {
+                const nextChunk = this.audioDataList[this.playIndex];
+                if (nextChunk?.data) {
+                  console.log(`options: Resuming playback from chunk ${this.playIndex} (was waiting for more chunks)`);
+                  this.isPlaying = true;
+                  this.playedEnd = false;
+                  this.playAudio(nextChunk.data);
+                }
+              }
+            } else if (existingLength === 0 && val.length > 0) {
+              // First time receiving data, initialize the list
+              this.audioDataList = val.map(item => ({ data: item.data }));
+            }
+          }
         } else if (this.outputType === OUTPUT_TYPE.PCM) {
           if (val?.length > 0) {
             this.cacheChunkArr.push(val[val.length - 1].data);
@@ -114,11 +141,20 @@ export default {
     },
     audioDataList: {
       handler(val) {
-        console.log("audioDataList", val);
-        if (val?.length > 0) {
+        console.log("audioDataList changed", val?.length, "isPlaying:", this.isPlaying, "playIndex:", this.playIndex, "autoplay:", this.autoplay);
+        if (val && val.length > 0) {
           // 设置了自动播放，且满足播放条件，则开始播放
-          if (this.autoplay && val[this.playIndex]?.data && !this.isPlaying) {
+          const hasData = val[this.playIndex]?.data;
+          console.log("Checking autoplay conditions:", {
+            autoplay: this.autoplay,
+            hasData: !!hasData,
+            isPlaying: this.isPlaying,
+            playIndex: this.playIndex
+          });
+          if (this.autoplay && hasData && !this.isPlaying) {
+            console.log("Starting autoplay!");
             this.isPlaying = true;
+            this.playedEnd = false;
             this.playAudio(val[this.playIndex].data);
           }
         }
@@ -201,7 +237,7 @@ export default {
       if (this.totalUrl) {
         URL.revokeObjectURL(this.totalUrl);
       }
-      this.errorText = this.$t("model_trial.request_info.audio_fail");
+      this.errorText = "Audio synthesis failed";
       this.currentUrl = "";
       this.totalUrl = "";
       this.playedEnd = true;
@@ -216,29 +252,35 @@ export default {
     playAudio(data) {
       try {
         if (this.outputType === OUTPUT_TYPE.MP3) {
-          const blob = base64ToBlob(data);
+          const blob = base64ToBlob(data, 'audio/mpeg');
           this.currentUrl = URL.createObjectURL(blob);
         } else if (this.outputType === OUTPUT_TYPE.PCM) {
           this.currentUrl = convertPCMBase64ToUrl(data, this.sampleRate);
         }
         this.playIndex++;
       } catch (error) {
-        console.log(error);
+        console.error('playAudio error:', error);
         this.stopAudio();
       }
     },
     // 播放结束
     onFinish() {
+      console.log(`onFinish: playIndex=${this.playIndex}, audioDataList.length=${this.audioDataList.length}, canConnect=${this.canConnect}`);
       const nextData = this.audioDataList[this.playIndex];
       if (nextData?.data) {
+        console.log(`onFinish: Playing next chunk ${this.playIndex}`);
         this.playAudio(nextData.data);
       } else {
         if (this.canConnect) {
           // 全返回完成能拼接的状态，则重置所有状态
+          console.log('onFinish: Response complete, resetting status');
           this.resetStatus();
         } else {
-          // 没有全返回完成，只返回一段或几段音频，后面音频段则延迟比较久返回的情况，就要重置播放状态，等待option监听后继续触发播放
-          this.isPlaying = false; // 重置播放状态
+          // 没有全返回完成，只返回一段或几段音频，后面音频段则延迟比较久返回的情况
+          // Set isPlaying to false but keep playIndex unchanged so we can resume when new chunks arrive
+          console.log(`onFinish: Waiting for more chunks. Current playIndex=${this.playIndex}, audioDataList.length=${this.audioDataList.length}`);
+          this.isPlaying = false;
+          this.currentUrl = ""; // Clear current URL so options watcher knows we're waiting
         }
       }
     },

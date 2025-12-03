@@ -1,61 +1,43 @@
 <template>
   <div class="tool-bar">
     <div v-if="currentBarStatus === toolBarStatus.DISCONNECTED" class="tool-bar__start">
-      <button class="tool-bar__start-btn" type="button" @click="clearAndConnect">
-        Start New Conversation
+      <button class="tool-bar__start-btn" type="button" @click.stop.prevent="clearAndConnect">
+        Start
       </button>
     </div>
     <div v-else class="tool-bar__inner">
-      <el-tooltip placement="top" :disabled="currentAudioStatus === mediaStatus.DISABLED">
-        <template #content>
-          {{ audioTip }}
-        </template>
-        <button
-          class="tool-bar__btn control"
-          :class="{
-            opened: currentAudioStatus === mediaStatus.OPENED,
-            unclose: currentAudioStatus === mediaStatus.UNCLOSE,
-            disabled: currentAudioStatus === mediaStatus.DISABLED,
-            paused: currentAudioStatus !== mediaStatus.OPENED,
-          }"
-          type="button"
-          @click="handleAudio"
-        >
-          <span
-            class="shape"
-            :class="currentAudioStatus === mediaStatus.OPENED ? 'shape-pause' : 'shape-play'"
-            aria-hidden="true"
-          ></span>
-        </button>
-      </el-tooltip>
-
       <div class="tool-bar__content">
         <img
           v-if="currentBarStatus === toolBarStatus.VOICING"
           src="@/assets/images/user-speaking.gif"
           alt="Recording in progress"
         />
-        <label
-          :class="{
-            disconnected: currentBarStatus === toolBarStatus.DISCONNECTED,
-            ready: currentBarStatus === toolBarStatus.READY,
-          }"
-          >{{ toolBarTxt }}</label
-        >
+        <div class="content-text">
+          <div class="action-links">
+            <span
+              v-if="currentAudioStatus === mediaStatus.OPENED && currentAudioStatus !== mediaStatus.DISABLED"
+              class="action-link stop"
+              @click="handleAudio"
+            >
+              Stop
+            </span>
+            <label
+              :class="{
+                disconnected: currentBarStatus === toolBarStatus.DISCONNECTED,
+                ready: currentBarStatus === toolBarStatus.READY,
+              }"
+              >{{ toolBarTxt }}</label
+            >
+            <span
+              v-if="currentBarStatus !== toolBarStatus.DISCONNECTED && currentBarStatus !== toolBarStatus.DISCONNECTING && !disabledConnectTip"
+              class="action-link disconnect"
+              @click="handleDisconnect"
+            >
+              Disconnect
+            </span>
+          </div>
+        </div>
       </div>
-
-      <el-tooltip
-        placement="top"
-        :disabled="currentBarStatus === toolBarStatus.DISCONNECTING || disabledConnectTip"
-      >
-        <template #content>
-          {{ connectTip }}
-        </template>
-        <button class="tool-bar__btn stop" type="button" @click="handleDisconnect">
-          <span class="shape shape-stop" aria-hidden="true"></span>
-          <span class="stop-text">Close</span>
-        </button>
-      </el-tooltip>
     </div>
   </div>
 </template>
@@ -101,6 +83,7 @@ export default {
       mediaStreamSource: null, // 录音源
       scriptProcessorNode: null, // 录音处理节点
       disabledConnectTip: false,
+      speechStopTimer: null, // Timer to delay speech stop detection
       MEDIA_TYPE, // 媒体类型
       // audioContext: null, //   需要一个AudioContext来创建AnalyserNode
       // analyser: null, //   需要一个AnalyserNode来获取录音数据
@@ -215,21 +198,36 @@ export default {
           this.soundVad.isSpeeching = val;
         }
         if (val) {
+          // Clear any pending speech stop timer when speech starts again
+          if (this.speechStopTimer) {
+            clearTimeout(this.speechStopTimer);
+            this.speechStopTimer = null;
+          }
           this.currentBarStatus = this.toolBarStatus.VOICING;
           console.log("--Speaking status--: Started speaking");
+          this.$emit("onVadStatus", true);
         } else {
-          this.currentBarStatus = this.toolBarStatus.READY;
-          console.log("--Speaking status--: Stopped speaking");
+          // Delay stopping to allow for natural pauses in speech
+          // Only stop if silence continues for 2 seconds
+          if (this.speechStopTimer) {
+            clearTimeout(this.speechStopTimer);
+          }
+          this.speechStopTimer = setTimeout(() => {
+            this.currentBarStatus = this.toolBarStatus.READY;
+            console.log("--Speaking status--: Stopped speaking (after delay)");
 
-          // 获取收集的录音数据
-          const wavBlob = this.soundVad.getRecordWavData();
-          this.$emit("onAudioData", wavBlob);
-          this.soundVad.clearRecordPCMData();
+            // 获取收集的录音数据
+            const wavBlob = this.soundVad.getRecordWavData();
+            this.$emit("onAudioData", wavBlob);
+            this.soundVad.clearRecordPCMData();
 
-          // 视频停止录制，收集视频数据
-          emitter.emit("onStopVideoRecorder");
+            // 视频停止录制，收集视频数据
+            emitter.emit("onStopVideoRecorder");
+            
+            this.$emit("onVadStatus", false);
+            this.speechStopTimer = null;
+          }, 2000); // 2 second delay before stopping
         }
-        this.$emit("onVadStatus", val);
       }
     },
     // 打开录音监听
@@ -294,15 +292,31 @@ export default {
       }
     },
     // 清除历史并重新连接
-    async clearAndConnect() {
-      this.$emit("onClearAndConnect");
+    clearAndConnect(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+      }
+      // Prevent multiple rapid clicks
+      if (this.disabledConnectTip) {
+        return;
+      }
       this.disabledConnectTip = true;
-      await sleep(1000);
+      // Emit immediately without delay
+      this.$emit("onClearAndConnect");
+      // Reset flag after a short delay to prevent rapid clicks
+      setTimeout(() => {
       this.disabledConnectTip = false;
+      }, 500);
     },
   },
   beforeDestroy() {
     this.soundVad.closeListen();
+    if (this.speechStopTimer) {
+      clearTimeout(this.speechStopTimer);
+      this.speechStopTimer = null;
+    }
   },
 };
 </script>
@@ -312,31 +326,50 @@ export default {
   width: 100%;
   &__start {
     width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
   }
   &__start-btn {
-    width: 100%;
-    height: 48px;
-    border-radius: 20px;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
     border: none;
-    background: linear-gradient(135deg, #0fcf6d, #0b8f50);
+    background: #5C9E7F;
     color: #fff;
-    font-size: 15px;
+    font-size: 18px;
     font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 16px 40px -18px rgba(11, 143, 80, 0.55);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 8px 24px -8px rgba(92, 158, 127, 0.5);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    pointer-events: auto;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    position: relative;
+    z-index: 10;
     &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 18px 44px -18px rgba(11, 143, 80, 0.65);
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 0 12px 32px -8px rgba(92, 158, 127, 0.6);
+      background: #4d8a6d;
     }
     &:active {
-      transform: translateY(0);
+      transform: translateY(0) scale(0.98);
+    }
+    &:focus {
+      outline: none;
+      box-shadow: 0 8px 24px -8px rgba(92, 158, 127, 0.5), 0 0 0 4px rgba(92, 158, 127, 0.2);
     }
   }
   &__inner {
     display: flex;
     align-items: center;
-    gap: 12px;
     padding: 10px 12px;
     background: #f3f4f6;
     border-radius: 22px;
@@ -433,7 +466,7 @@ export default {
   }
   &__content {
     flex: 1;
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 10px;
     border-radius: 16px;
@@ -441,18 +474,59 @@ export default {
     border: 1px solid var(--va-soft-border);
     padding: 10px 12px;
     min-height: 44px;
+    
     img {
       height: 34px;
     }
-      label {
+    
+    .content-text {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    label {
       color: var(--va-text-sub);
       font-size: 14px;
       font-weight: 600;
+      flex: 1;
       &.ready {
-        color: var(--va-primary-blue);
+        color: #5C9E7F;
       }
       &.disconnected {
         color: var(--va-text-sub);
+      }
+    }
+    
+    .action-links {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+    }
+    
+    .action-link {
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+      user-select: none;
+      
+      &:hover {
+        opacity: 0.8;
+      }
+      
+      &:active {
+        opacity: 0.6;
+      }
+      
+      &.stop {
+        color: #f1343a;
+      }
+      
+      &.disconnect {
+        color: #1F2937;
       }
     }
   }

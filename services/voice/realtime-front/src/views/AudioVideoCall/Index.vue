@@ -21,15 +21,15 @@
               <span class="icon">☰</span>
             </button>
             <div class="app-header__center">
-              <span
-                class="status-badge"
-                :class="{
-                  connected: isConnected,
-                  connecting: isConnecting,
-                }"
-              >
-                {{ isConnecting ? "Connecting..." : isConnected ? "Live" : "Ready" }}
-              </span>
+            <span
+              class="status-badge"
+              :class="{
+                connected: isConnected,
+                connecting: isConnecting,
+              }"
+            >
+              {{ isConnecting ? "Connecting..." : isConnected ? "Live" : "Ready" }}
+            </span>
             </div>
             <button 
               class="settings-btn" 
@@ -127,6 +127,7 @@ import {
   loadSession,
   listSessions,
   deleteSession,
+  sessionHasMessages,
 } from "@/utils/chatHistory";
 import { getCurrentUser } from "@/utils/auth";
 
@@ -464,7 +465,7 @@ Bad: long analytical explanations.
           },
         },
         voice: MODEL_TIMBRE.TONGTONG, // 模型音色
-        output_audio_format: "pcm", // 音频输出格式，支持mp3、pcm
+        output_audio_format: "mp3", // 音频输出格式，支持mp3、pcm
         input_audio_format: "wav", // 音频输入格式，支持wav；
         tools: [], // 工具列表
         input_audio_noise_reduction: {
@@ -475,6 +476,7 @@ Bad: long analytical explanations.
       vadType: VAD_TYPE.SERVER_VAD, // VAD类型，server_vad:服务端VAD，client_vad:客户端VAD - Always use server_vad
       responseType: RESPONSE_TYPE.AUDIO, // 返回类型，text:文本，audio:音频 - Always use audio
       currentAudioBlob: null, // 当前音频blob
+      audioBlobMap: {}, // Map of requestId -> audio blob to preserve audio for each request
       currentVideoBlob: null, // 当前视频blob
       responseId: "", // 服务端返回消息的id
       requestId: "", // 客户端请求消息的id
@@ -607,14 +609,32 @@ Bad: long analytical explanations.
       };
     },
     // 断开websocket连接
-    closeWS() {
+    async closeWS() {
       // Flush any pending session list refresh timer
       if (this._sessionListRefreshTimer) {
         clearTimeout(this._sessionListRefreshTimer);
         this._sessionListRefreshTimer = null;
-        // Refresh session list in background (don't await)
-        this.loadSessionsList();
       }
+      
+      // Check if current session has any messages, delete if empty
+      if (this.currentSessionId) {
+        const userId = this.getUserId();
+        if (userId) {
+          try {
+            const hasMessages = await sessionHasMessages(userId, this.currentSessionId);
+            if (!hasMessages) {
+              console.log('closeWS: Session has no messages, deleting empty session:', this.currentSessionId);
+              await deleteSession(userId, this.currentSessionId);
+              this.currentSessionId = null; // Clear current session ID
+            }
+          } catch (error) {
+            console.error('Error checking/deleting empty session:', error);
+          }
+        }
+      }
+      
+      // Refresh session list after cleanup
+      await this.loadSessionsList();
       
       // 关闭连接
       if (this.sock && this.sock.readyState === WebSocket.OPEN) {
@@ -650,11 +670,35 @@ Bad: long analytical explanations.
             break;
           case SOCKET_STATUS.COMMITED: // 服务端收到提交的音频数据
             this.requestId = data.item_id;
-            this.addAudioVideoToList(
-              this.requestId,
-              this.currentAudioBlob,
-              MSG_TYPE.CLIENT
-            ); // 将音频数据追加到列表
+            console.log('COMMITED: Received item_id:', this.requestId, 'currentAudioBlob exists:', !!this.currentAudioBlob);
+            // Store the audio blob if it exists (for CLIENT_VAD where audioData happens before COMMITED)
+            // For SERVER_VAD, audioData will be called later and will store the blob using this requestId
+            if (this.currentAudioBlob) {
+              this.audioBlobMap[this.requestId] = this.currentAudioBlob;
+              console.log('COMMITED: Stored existing audio blob for requestId:', this.requestId);
+            }
+            // Create user message placeholder immediately so it appears before response
+            // Audio blob will be added later when audioData is called (for SERVER_VAD)
+            const audioBlob = this.audioBlobMap[this.requestId] || this.currentAudioBlob;
+            const userMessagePlaceholder = {
+              id: this.requestId,
+              type: MSG_TYPE.CLIENT,
+              audioUrl: audioBlob ? URL.createObjectURL(audioBlob) : null,
+              textContent: [], // Will be updated when transcript arrives
+            };
+            // Check if message already exists, if not add it
+            const existingUserIndex = this.messageList.findIndex((item) => item.id === this.requestId);
+            if (existingUserIndex === -1) {
+              this.messageList.push(userMessagePlaceholder);
+              this.scrollToBottom();
+            } else {
+              // Update existing message with audio if we have it
+              const existing = this.messageList[existingUserIndex];
+              if (!existing.audioUrl && audioBlob) {
+                existing.audioUrl = URL.createObjectURL(audioBlob);
+                this.messageList.splice(existingUserIndex, 1, { ...existing });
+              }
+            }
             if (this.vadType === VAD_TYPE.CLIENT_VAD) {
               this.sendResponseCreate(); // 创建模型回复
             }
@@ -662,6 +706,20 @@ Bad: long analytical explanations.
             break;
           case SOCKET_STATUS.RESPONSE_CREATED: // 回复已创建（开始调用模型）
             this.responseId = data.response.id;
+            // Ensure user message is displayed before response
+            const userMsgIndex = this.messageList.findIndex((item) => item.id === this.requestId);
+            if (userMsgIndex === -1) {
+              // Create placeholder user message if it doesn't exist yet
+              // Use stored audio blob for this requestId if available
+              const audioBlob = this.audioBlobMap[this.requestId] || this.currentAudioBlob;
+              const placeholder = {
+                id: this.requestId,
+                type: MSG_TYPE.CLIENT,
+                audioUrl: audioBlob ? URL.createObjectURL(audioBlob) : null,
+                textContent: [],
+              };
+              this.messageList.push(placeholder);
+            }
             this.loopScrollToBotton(); // 开始启动滚动到底部
             console.log("%c 响应事件-回复已创建（开始调用模型）", "color: green");
             break;
@@ -735,6 +793,21 @@ Bad: long analytical explanations.
     async audioData(blob) {
       if (blob && blob.size > this.sendAudioLimit) {
         this.currentAudioBlob = blob;
+        // Store the blob in the map using the current requestId (set by COMMITED event)
+        // This ensures the blob is associated with the correct requestId even if COMMITED arrived before audioData
+        if (this.requestId) {
+          this.audioBlobMap[this.requestId] = blob;
+          console.log('audioData: Stored audio blob for requestId:', this.requestId, 'blob size:', blob.size);
+          
+          // Update the existing message with the audio URL if it exists
+          const messageIndex = this.messageList.findIndex((item) => item.id === this.requestId && item.type === MSG_TYPE.CLIENT);
+          if (messageIndex !== -1 && !this.messageList[messageIndex].audioUrl) {
+            const message = this.messageList[messageIndex];
+            message.audioUrl = URL.createObjectURL(blob);
+            this.messageList.splice(messageIndex, 1, { ...message });
+            console.log('audioData: Updated existing message with audioUrl for requestId:', this.requestId);
+          }
+        }
         this.resFinished = false;
         emitter.emit("onStopAudio"); // 停止音频
         if (this.vadType === VAD_TYPE.CLIENT_VAD) {
@@ -769,6 +842,10 @@ Bad: long analytical explanations.
           this.messageList.splice(resIndex, 1, updatedMessage);
           // Don't save here - wait for transcript to arrive via addAudioTextToList
         } else {
+          // Ensure user message appears before server response
+          const userMsgIndex = this.messageList.findIndex((item) => item.id === this.requestId && item.type === MSG_TYPE.CLIENT);
+          const insertIndex = userMsgIndex !== -1 ? userMsgIndex + 1 : this.messageList.length;
+          
           const newMessage = {
             id,
             type,
@@ -777,27 +854,31 @@ Bad: long analytical explanations.
             audioData: [{ data }],
             textContent: [],
           };
-          this.messageList.push(newMessage);
+          this.messageList.splice(insertIndex, 0, newMessage);
           this.scrollToBottom();
           // Don't save here - wait for transcript to arrive via addAudioTextToList
         }
         // console.log('---添加服务返回的音频到对话框--addAudioVideoToList---')
       } else {
+        // User audio - already handled in COMMITED event, but keep this for backward compatibility
         if (data && data.size > this.sendAudioLimit) {
-          const newMessage = {
-            id,
-            type,
-            videoUrlContent: this.currentVideoBlob
-              ? URL.createObjectURL(this.currentVideoBlob)
-              : null,
-            audioUrl: URL.createObjectURL(data),
-            textContent: [],
-          };
-          this.messageList.push(newMessage);
-          this.currentVideoBlob = null;
-          this.scrollToBottom();
-          console.log("---添加用户发送的音频到对话框--data?.size---:", data?.size);
-          // Don't save here - wait for transcript to arrive via addAudioTextToList
+          const existingIndex = this.messageList.findIndex((item) => item.id === id);
+          if (existingIndex === -1) {
+            const newMessage = {
+              id,
+              type,
+              videoUrlContent: this.currentVideoBlob
+                ? URL.createObjectURL(this.currentVideoBlob)
+                : null,
+              audioUrl: URL.createObjectURL(data),
+              textContent: [],
+            };
+            this.messageList.push(newMessage);
+            this.currentVideoBlob = null;
+            this.scrollToBottom();
+            console.log("---添加用户发送的音频到对话框--data?.size---:", data?.size);
+            // Don't save here - wait for transcript to arrive via addAudioTextToList
+          }
         }
       }
     },
@@ -810,16 +891,29 @@ Bad: long analytical explanations.
       console.log('addAudioTextToList: Received transcript', { id, data, type, dataLength: data.length });
       const index = this.messageList.findIndex((item) => item.id === id);
       if (index !== -1) {
+        // Message already exists, just update it in place without changing position
         const target = this.messageList[index];
         target.textContent.push(data);
+        // If message doesn't have audioUrl yet, try to get it from audioBlobMap
+        if (!target.audioUrl && type === MSG_TYPE.CLIENT) {
+          const audioBlob = this.audioBlobMap[id] || null;
+          if (audioBlob) {
+            target.audioUrl = URL.createObjectURL(audioBlob);
+            console.log('addAudioTextToList: Added audioUrl from audioBlobMap for requestId:', id);
+          }
+        }
         const updatedMessage = { ...target };
+        // Keep the message in the same position, just update it
         this.messageList.splice(index, 1, updatedMessage);
         console.log('addAudioTextToList: Updated existing message, full transcript:', updatedMessage.textContent.join(''));
         // Save to history after updating message
         this.saveMessageToHistory(updatedMessage);
       } else {
+        // Message doesn't exist yet, need to create it
         let newMessage;
         if (type === MSG_TYPE.SERVER) {
+          // For server messages, find position after user message
+          const userMsgIndex = this.messageList.findIndex((item) => item.id === this.requestId && item.type === MSG_TYPE.CLIENT);
           newMessage = {
             id,
             type,
@@ -828,15 +922,32 @@ Bad: long analytical explanations.
             audioData: [],
             textContent: [data],
           };
-          this.messageList.push(newMessage);
+          // Insert after user message if it exists, otherwise append at end
+          const insertIndex = userMsgIndex !== -1 ? userMsgIndex + 1 : this.messageList.length;
+          this.messageList.splice(insertIndex, 0, newMessage);
         } else {
+          // For user messages, find position before any server responses for this request
+          // Find the first server message that comes after this user's request
+          let insertIndex = this.messageList.length;
+          for (let i = 0; i < this.messageList.length; i++) {
+            if (this.messageList[i].type === MSG_TYPE.SERVER && this.messageList[i].id === this.responseId) {
+              insertIndex = i;
+              break;
+            }
+          }
+          
+          // Get the stored audio blob for this requestId
+          const audioBlob = this.audioBlobMap[id] || null;
           newMessage = {
             id,
             type,
-            audioUrl: "",
+            audioUrl: audioBlob ? URL.createObjectURL(audioBlob) : null,
             textContent: [data],
           };
-          this.messageList.push(newMessage);
+          // Clean up the stored blob after using it (optional - can keep for history)
+          // delete this.audioBlobMap[id];
+          // Insert before server message if found, otherwise append
+          this.messageList.splice(insertIndex, 0, newMessage);
         }
         this.scrollToBottom();
         console.log('addAudioTextToList: Created new message with transcript:', newMessage.textContent.join(''));
@@ -939,13 +1050,21 @@ Bad: long analytical explanations.
     },
     // 工具条发起，清空消息并重新连接
     async clearAndConnect() {
+      // Immediate visual feedback
+      this.isConnecting = true;
       this.isFirstOpenMedia = true; // 重置首次打开媒体
       this.clearObjectURL(); // 清空残留对象url
       this.messageList = []; // 清空消息
-      this.isConnecting = false; // 确保连接状态重置
       this.isConnected = false; // 确保连接状态重置
-      // 创建新会话
-      await this.createNewSession();
+      
+      // Create session and open connection - don't block on session creation
+      this.createNewSession().then(() => {
+        // Session created, continue
+      }).catch(error => {
+        console.error('Error creating session:', error);
+      });
+      
+      // Open WebSocket immediately without waiting for session
       this.openWS(MEDIA_TYPE.AUDIO); // Always use audio mode
     },
     // 视频组件发起，打开视频或屏幕共享成功
@@ -1342,7 +1461,7 @@ Bad: long analytical explanations.
     
     .icon {
       font-size: 20px;
-      color: var(--va-text-main);
+    color: var(--va-text-main);
     }
   }
   
