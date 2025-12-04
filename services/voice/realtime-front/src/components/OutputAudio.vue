@@ -34,7 +34,6 @@
       :zoomable="false"
       @finish="onFinish"
       @audioprocess="audioprocess"
-      @error="handleAudioError"
     />
   </div>
 </template>
@@ -98,35 +97,7 @@ export default {
     options: {
       handler(val, oldVal) {
         if (this.outputType === OUTPUT_TYPE.MP3) {
-          // Detect if this is a completely new response
-          // New response if: oldVal is empty/null, or first chunk data is different, or val is empty (reset)
-          const isNewResponse = !oldVal || oldVal.length === 0 || 
-                                (val && val.length > 0 && oldVal && oldVal.length > 0 && 
-                                 val[0]?.data !== oldVal[0]?.data) ||
-                                (!val || val.length === 0);
-          
-          if (isNewResponse && val && val.length > 0) {
-            // New response started - reset everything
-            console.log('options: New response detected, resetting state');
-            // Stop playback first
-            if (this.$refs.audoplayAudioRef) {
-              this.$refs.audoplayAudioRef.endedPlay();
-            }
-            if (this.currentUrl) {
-              URL.revokeObjectURL(this.currentUrl);
-            }
-            // Reset all state
-            this.isPlaying = false;
-            this.currentUrl = "";
-            this.playedEnd = true;
-            this.playIndex = 0;
-            this.audioDataList = val.map(item => ({ data: item.data }));
-            this.cacheChunkArr = [];
-            // Don't trigger playback here - let audioDataList watcher handle initial playback
-            return;
-          }
-          
-          // Append new chunks to existing response
+          // Append new chunks instead of replacing the entire array
           if (val && val.length > 0) {
             // Check if this is a new chunk (different from what we already have)
             const existingLength = this.audioDataList.length;
@@ -135,7 +106,6 @@ export default {
               for (let i = existingLength; i < val.length; i++) {
                 if (val[i]?.data) {
                   this.audioDataList.push({ data: val[i].data });
-                  this.lastChunkReceivedTime = Date.now(); // Update timestamp when chunk arrives
                   console.log(`options: Appended chunk ${i} to audioDataList, total chunks: ${this.audioDataList.length}`);
                 }
               }
@@ -152,14 +122,8 @@ export default {
               }
             } else if (existingLength === 0 && val.length > 0) {
               // First time receiving data, initialize the list
-              // Don't trigger playback here - let audioDataList watcher handle initial playback
               this.audioDataList = val.map(item => ({ data: item.data }));
             }
-          } else if (!val || val.length === 0) {
-            // Options cleared - reset state
-            console.log('options: Options cleared, resetting state');
-            this.resetStatus();
-            this.audioDataList = [];
           }
         } else if (this.outputType === OUTPUT_TYPE.PCM) {
           if (val?.length > 0) {
@@ -176,30 +140,22 @@ export default {
       deep: true,
     },
     audioDataList: {
-      handler(val, oldVal) {
+      handler(val) {
         console.log("audioDataList changed", val?.length, "isPlaying:", this.isPlaying, "playIndex:", this.playIndex, "autoplay:", this.autoplay);
         if (val && val.length > 0) {
-          // Only start playback if this is the initial load (oldVal is empty/null)
-          // Don't trigger playback when chunks are appended - let onFinish and options watcher handle continuation
-          const isInitialLoad = !oldVal || oldVal.length === 0;
-          
-          if (isInitialLoad) {
-            // Start playing from index 0
-            const hasData = val[0]?.data; // Use index 0, not this.playIndex
-            console.log("Checking autoplay conditions (initial load):", {
-              autoplay: this.autoplay,
-              hasData: !!hasData,
-              isPlaying: this.isPlaying,
-              playIndex: 0
-            });
-            if (this.autoplay && hasData && !this.isPlaying) {
-              console.log("Starting autoplay!");
-              this.isPlaying = true;
-              this.playedEnd = false;
-              this.playIndex = 0; // Ensure playIndex starts at 0
-              this.lastChunkReceivedTime = Date.now(); // Initialize timestamp
-              this.playAudio(val[0].data); // Use index 0
-            }
+          // 设置了自动播放，且满足播放条件，则开始播放
+          const hasData = val[this.playIndex]?.data;
+          console.log("Checking autoplay conditions:", {
+            autoplay: this.autoplay,
+            hasData: !!hasData,
+            isPlaying: this.isPlaying,
+            playIndex: this.playIndex
+          });
+          if (this.autoplay && hasData && !this.isPlaying) {
+            console.log("Starting autoplay!");
+            this.isPlaying = true;
+            this.playedEnd = false;
+            this.playAudio(val[this.playIndex].data);
           }
         }
       },
@@ -214,26 +170,8 @@ export default {
           this.cacheChunkArr = [];
         }
 
-        // When response is complete, check if we need to continue playing remaining chunks
-        // Don't reset immediately - let onFinish handle it after all chunks are played
         this.$nextTick(() => {
-          // Only concat audios for PCM, for MP3 we play chunks sequentially
-          if (this.outputType === OUTPUT_TYPE.PCM) {
-            this.concatAudios();
-          } else {
-            // For MP3, check if there are remaining chunks to play
-            // Only resume if we're not currently playing and there are chunks left
-            if (this.playIndex < this.audioDataList.length && !this.isPlaying && !this.currentUrl) {
-              const nextChunk = this.audioDataList[this.playIndex];
-              if (nextChunk?.data) {
-                console.log(`canConnect: Resuming playback of remaining chunks. playIndex=${this.playIndex}, total=${this.audioDataList.length}`);
-                this.isPlaying = true;
-                this.playedEnd = false;
-                this.playAudio(nextChunk.data);
-              }
-            }
-            // Don't reset here - let onFinish handle it when all chunks are actually played
-          }
+          this.concatAudios();
         });
       }
     },
@@ -252,11 +190,6 @@ export default {
     this.$cacheTimes = [];
   },
   beforeDestroy() {
-    // Clear any pending reset timer
-    if (this.resetTimer) {
-      clearTimeout(this.resetTimer);
-      this.resetTimer = null;
-    }
     if (this.audioManager) {
       this.audioManager.close();
       this.audioManager = null;
@@ -268,18 +201,35 @@ export default {
   methods: {
     // 合成音频
     concatAudios() {
-      // Only handle PCM - MP3 chunks are played directly via playAudio()
-      if (this.outputType === OUTPUT_TYPE.PCM) {
+      if (this.outputType === OUTPUT_TYPE.MP3) {
+        let buffersPromise = [];
+        this.audioDataList.forEach((item) => {
+          if (item.data) {
+            const buffer = base64ToArrayBuffer(item.data);
+            buffersPromise.push(this.audioManager.decodeAudioData(buffer));
+          }
+        });
+        Promise.all(buffersPromise)
+          .then((audioBuffers) => {
+            if (audioBuffers?.length > 0) {
+              const output = this.audioManager.concatAudio(audioBuffers);
+              const { url } = this.audioManager.export(output, "audio/mp3");
+              this.totalUrl = url;
+              buffersPromise = [];
+            }
+          })
+          .catch((err) => {
+            console.log("合成失败", err);
+            this.synthesisError(); // 合成失败
+          });
+      } else if (this.outputType === OUTPUT_TYPE.PCM) {
         try {
           const audioBase64Arr = this.audioDataList.map((item) => item.data);
           this.totalUrl = convertPCMBase64ToUrl(audioBase64Arr.flat(), this.sampleRate);
         } catch (err) {
-          console.error("PCM synthesis failed", err);
+          console.log("合成失败", err);
           this.synthesisError(); // 合成失败
         }
-      } else {
-        // MP3 output type - chunks are played directly, no synthesis needed
-        console.warn("concatAudios() called for MP3 output type - this should not happen");
       }
     },
     // 合成失败
@@ -302,61 +252,36 @@ export default {
     playAudio(data) {
       try {
         if (this.outputType === OUTPUT_TYPE.MP3) {
-          // Validate data before creating blob
-          if (!data || typeof data !== 'string') {
-            throw new Error('Invalid MP3 data');
-          }
           const blob = base64ToBlob(data, 'audio/mpeg');
-          if (!blob || blob.size === 0) {
-            throw new Error('Empty MP3 blob');
-          }
           this.currentUrl = URL.createObjectURL(blob);
         } else if (this.outputType === OUTPUT_TYPE.PCM) {
           this.currentUrl = convertPCMBase64ToUrl(data, this.sampleRate);
         }
-        // DON'T increment playIndex here - do it in onFinish after audio completes
+        this.playIndex++;
       } catch (error) {
         console.error('playAudio error:', error);
-        // Don't show synthesis error for playback failures - just log and continue
-        // The error might be temporary (network issue, incomplete chunk, etc.)
-        console.warn('Failed to play audio chunk, will retry with next chunk');
-        // Clear current URL and mark as not playing so next chunk can be tried
-        if (this.currentUrl) {
-          URL.revokeObjectURL(this.currentUrl);
-        }
-        this.currentUrl = "";
-        this.isPlaying = false;
-        // Don't call stopAudio() as it resets everything - just wait for next chunk
+        this.stopAudio();
       }
     },
     // 播放结束
     onFinish() {
-      console.log(`onFinish: playIndex=${this.playIndex}, audioDataList.length=${this.audioDataList.length}, canConnect=${this.canConnect}, isPlaying=${this.isPlaying}`);
-      
-      // Increment playIndex AFTER current chunk finishes playing
-      this.playIndex++;
-      
-      // Check if there's a next chunk to play
+      console.log(`onFinish: playIndex=${this.playIndex}, audioDataList.length=${this.audioDataList.length}, canConnect=${this.canConnect}`);
       const nextData = this.audioDataList[this.playIndex];
       if (nextData?.data) {
-        // There's more data - play it immediately
         console.log(`onFinish: Playing next chunk ${this.playIndex}`);
         this.playAudio(nextData.data);
-        return;
-      }
-      
-      // No more chunks available at current playIndex
-      // Just wait - options watcher will resume when new chunks arrive
-      console.log(`onFinish: No next chunk. Waiting for more. playIndex=${this.playIndex}, length=${this.audioDataList.length}, canConnect=${this.canConnect}`);
-      this.isPlaying = false;
-      this.currentUrl = ""; // Clear so options watcher can resume when new chunks arrive
-      
-      // Only reset if response is complete AND we've played all chunks
-      // No timer needed - if chunks arrive, options watcher handles it
-      if (this.canConnect && this.playIndex >= this.audioDataList.length) {
-        // Response complete and all chunks played - reset immediately
-        console.log('onFinish: Response complete and all chunks played, resetting');
-        this.resetStatus();
+      } else {
+        if (this.canConnect) {
+          // 全返回完成能拼接的状态，则重置所有状态
+          console.log('onFinish: Response complete, resetting status');
+          this.resetStatus();
+        } else {
+          // 没有全返回完成，只返回一段或几段音频，后面音频段则延迟比较久返回的情况
+          // Set isPlaying to false but keep playIndex unchanged so we can resume when new chunks arrive
+          console.log(`onFinish: Waiting for more chunks. Current playIndex=${this.playIndex}, audioDataList.length=${this.audioDataList.length}`);
+          this.isPlaying = false;
+          this.currentUrl = ""; // Clear current URL so options watcher knows we're waiting
+        }
       }
     },
     // 播放进度
@@ -367,48 +292,15 @@ export default {
         this.playedEnd = false;
       }
     },
-    // 处理音频播放错误
-    handleAudioError() {
-      console.warn('Audio playback error - chunk may be corrupted or incomplete, trying next chunk');
-      // Don't show error to user - just try next chunk
-      // This is common on mobile with network issues
-      if (this.currentUrl) {
-        URL.revokeObjectURL(this.currentUrl);
-      }
-      this.currentUrl = "";
-      this.isPlaying = false;
-      // Try next chunk if available
-      this.$nextTick(() => {
-        const nextData = this.audioDataList[this.playIndex];
-        if (nextData?.data) {
-          this.playAudio(nextData.data);
-        }
-      });
-    },
     togglePlay() {
       this.isPlaying = !this.isPlaying;
     },
     // 重置相关状态
     resetStatus() {
-      // Clear any pending reset timer
-      if (this.resetTimer) {
-        clearTimeout(this.resetTimer);
-        this.resetTimer = null;
-      }
-      // Stop any currently playing audio
-      if (this.$refs.audoplayAudioRef) {
-        this.$refs.audoplayAudioRef.endedPlay();
-      }
-      // Revoke old URL to free memory
-      if (this.currentUrl) {
-        URL.revokeObjectURL(this.currentUrl);
-      }
       this.isPlaying = false; // 重置播放状态
       this.currentUrl = ""; // 重置播放地址
       this.playedEnd = true; // 重置播放结束状态
       this.playIndex = 0; // 重置播放索引
-      this.audioDataList = []; // Clear audio data list
-      this.cacheChunkArr = []; // Clear cache
     },
   },
 };

@@ -21,13 +21,6 @@
             >
               Stop
             </span>
-            <span
-              v-else-if="currentAudioStatus === mediaStatus.CLOSED && currentBarStatus === toolBarStatus.CENNECTED"
-              class="action-link start-recording"
-              @click="handleAudio"
-            >
-              Start Recording
-            </span>
             <label
               :class="{
                 disconnected: currentBarStatus === toolBarStatus.DISCONNECTED,
@@ -530,10 +523,6 @@ export default {
       
       &.stop {
         color: #f1343a;
-      }
-      
-      &.start-recording {
-        color: #5C9E7F;
       }
       
       &.disconnect {
