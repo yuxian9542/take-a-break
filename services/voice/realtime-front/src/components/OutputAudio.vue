@@ -202,21 +202,34 @@ export default {
     // 合成音频
     concatAudios() {
       if (this.outputType === OUTPUT_TYPE.MP3) {
-        let buffersPromise = [];
-        this.audioDataList.forEach((item) => {
-          if (item.data) {
-            const buffer = base64ToArrayBuffer(item.data);
-            buffersPromise.push(this.audioManager.decodeAudioData(buffer));
-          }
-        });
-        Promise.all(buffersPromise)
-          .then((audioBuffers) => {
-            if (audioBuffers?.length > 0) {
-              const output = this.audioManager.concatAudio(audioBuffers);
-              const { url } = this.audioManager.export(output, "audio/mp3");
-              this.totalUrl = url;
-              buffersPromise = [];
+        const decodePromises = this.audioDataList
+          .filter((item) => !!item?.data)
+          .map((item) => {
+            try {
+              const buffer = base64ToArrayBuffer(item.data);
+              return this.audioManager.decodeAudioData(buffer);
+            } catch (err) {
+              console.warn("decodeAudioData: base64 解析失败，跳过该分片", err);
+              return Promise.reject(err);
             }
+          });
+
+        Promise.allSettled(decodePromises)
+          .then((results) => {
+            const audioBuffers = results
+              .filter((r) => r.status === "fulfilled" && !!r.value)
+              .map((r) => r.value);
+
+            // 若全部失败，则显示错误；部分失败则继续合成剩余的分片，避免整段报错
+            if (!audioBuffers.length) {
+              this.synthesisError();
+              return;
+            }
+
+            const output = this.audioManager.concatAudio(audioBuffers);
+            const { url } = this.audioManager.export(output, "audio/mp3");
+            this.totalUrl = url;
+            this.errorText = "";
           })
           .catch((err) => {
             console.log("合成失败", err);
