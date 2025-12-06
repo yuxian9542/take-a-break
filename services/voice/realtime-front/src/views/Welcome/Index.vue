@@ -1,80 +1,56 @@
 <template>
-  <div class="va-page welcome-page">
-    <div class="app-container welcome-card">
-      <header class="header">
-        <div class="header-left">
-          <div class="app-subtitle">
-            <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16zm-1-13h2v6h-2zm0 8h2v2h-2z" />
-            </svg>
-            AI Voice Assistant
-          </div>
-          <div class="app-title">Voice Companion</div>
+  <MemoryLayout>
+    <StarfieldBackground />
+    <div class="welcome-shell">
+      <div class="hero">
+        <p class="eyebrow">Memory Stardust</p>
+        <h1>Collect your moments in a night sky.</h1>
+        <p class="lede">
+          We turn your memories into stardust and keep the stories they hold. Start a voice session
+          to let your thoughts drift.
+        </p>
+        <div class="cta-row">
+          <button class="solid" type="button" @click="startChat()">Start a Memory</button>
+          <button class="ghost" type="button" @click="startChat(suggestions[0].prompt)">
+            Visualize Memory
+          </button>
         </div>
-        <div class="header-right">
-          <div class="status-badge ready">
-            <span class="status-dot"></span>
-            Ready
-          </div>
-        </div>
-      </header>
-
-      <div class="view-wrapper">
-        <div class="view-welcome">
-          <div class="hero-section">
-            <button class="mic-button-large" type="button" @click="startChat()">
-              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                <line x1="12" y1="19" x2="12" y2="23"></line>
-                <line x1="8" y1="23" x2="16" y2="23"></line>
-              </svg>
-            </button>
-            <div class="hero-text">
-              <div class="hero-title">Ready to start chatting?</div>
-              <div class="hero-sub">Tap the mic or pick a topic below</div>
-            </div>
-          </div>
-
-          <div class="suggestions-section">
-            <div class="suggestions-title">💡 Suggested topics</div>
-            <button
-              v-for="item in suggestions"
-              :key="item.title"
-              type="button"
-              class="suggestion-card-v"
-              @click="startChat(item.prompt)"
-            >
-              <div class="card-icon" :aria-label="item.title">{{ item.emoji }}</div>
-              <div class="card-info">
-                <div class="card-title">{{ item.title }}</div>
-                <div class="card-desc">{{ item.desc }}</div>
-              </div>
-            </button>
-          </div>
-        </div>
+        <div class="hint">Ready — tap to begin a voice chat with AI</div>
       </div>
 
-      <div class="bottom-interaction-area">
-        <button class="talk-btn" type="button" @click="startChat()">
-          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-          </svg>
-          Start a conversation
-        </button>
-        <div class="hint-text">Tap to begin a voice chat with AI</div>
+      <div class="suggestions">
+        <div class="suggestions-title">Suggested memories</div>
+        <div class="suggestions-grid">
+          <button
+            v-for="item in suggestions"
+            :key="item.title"
+            type="button"
+            class="suggestion-card"
+            @click="startChat(item.prompt)"
+          >
+            <div class="icon">{{ item.emoji }}</div>
+            <div class="copy">
+              <div class="title">{{ item.title }}</div>
+              <div class="desc">{{ item.desc }}</div>
+            </div>
+          </button>
+        </div>
       </div>
     </div>
-  </div>
+  </MemoryLayout>
 </template>
 
 <script setup>
 import { useRouter } from 'vue-router';
+import MemoryLayout from '@/components/memory/MemoryLayout.vue';
+import StarfieldBackground from '@/components/memory/StarfieldBackground.vue';
 
 const router = useRouter();
 
 const suggestions = [
-  { title: 'Vent about your boss', desc: 'Let it out, I am listening', emoji: '😤', prompt: 'Vent about your boss' },
+  { title: 'Vent about your boss', desc: 'Let it out, I am listening', emoji: '🌫️', prompt: 'Vent about your boss' },
+  { title: 'Celebrate a small win', desc: 'Relive a happy detail from today', emoji: '✨', prompt: 'Share a small win from today' },
+  { title: 'Store a memory', desc: 'Describe a picture in your mind', emoji: '🪞', prompt: 'Tell me about a vivid memory you want to keep' },
 ];
 
 const startChat = (prompt) => {
@@ -88,266 +64,155 @@ const startChat = (prompt) => {
 </script>
 
 <style scoped lang="less">
-.welcome-page {
-  background: var(--bg-color);
-}
-
-.welcome-card {
-  background: var(--card-bg);
-}
-
-.header {
-  padding: 20px 24px 10px 24px;
-  padding-top: max(20px, env(safe-area-inset-top));
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  background: var(--card-bg);
-  z-index: 10;
-}
-
-.header-left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.app-subtitle {
-  font-size: 0.85rem;
-  color: var(--text-sub);
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.app-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text-main);
-  letter-spacing: -0.5px;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.status-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  padding: 6px 12px;
-  border-radius: 20px;
-  transition: all 0.3s;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.status-badge.ready {
-  color: #10b981;
-  background: rgba(16, 185, 129, 0.1);
-}
-
-.status-badge.ready .status-dot {
-  background: #10b981;
-}
-
-.view-wrapper {
-  flex: 1;
+.welcome-shell {
   position: relative;
-  overflow: hidden;
+  min-height: 100vh;
+  padding: 60px 24px 48px;
   display: flex;
   flex-direction: column;
-  background: #f9fafb;
-}
-
-.view-welcome {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 20px 28px;
-  animation: fadeIn 0.4s ease;
-  background: var(--card-bg);
-}
-
-.hero-section {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+  gap: 32px;
   align-items: center;
   justify-content: center;
-  margin-bottom: 20px;
-}
-
-.mic-button-large {
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  border: none;
-  background: linear-gradient(135deg, #60a5fa, #3b82f6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow-btn);
-  cursor: pointer;
-  transition: transform 0.2s;
-  margin-bottom: 40px;
-  position: relative;
-}
-
-.mic-button-large::before {
-  content: "";
-  position: absolute;
-  top: -20px;
-  left: -20px;
-  right: -20px;
-  bottom: -20px;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, rgba(255, 255, 255, 0) 70%);
-  z-index: -1;
-  border-radius: 50%;
-}
-
-.mic-button-large:active {
-  transform: scale(0.95);
-}
-
-.mic-button-large svg {
-  width: 50px;
-  height: 50px;
-  color: white;
-}
-
-.hero-text {
+  color: #f4f8ff;
+  z-index: 1;
   text-align: center;
 }
 
-.hero-title {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--text-main);
-  margin-bottom: 8px;
-}
-
-.hero-sub {
-  font-size: 0.9rem;
-  color: var(--text-sub);
-}
-
-.suggestions-section {
-  margin-bottom: 16px;
+.hero {
+  max-width: 820px;
   display: flex;
   flex-direction: column;
+  gap: 18px;
+}
+
+.eyebrow {
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(34px, 6vw, 58px);
+  font-weight: 800;
+  letter-spacing: -0.6px;
+}
+
+.lede {
+  margin: 0;
+  color: rgba(235, 242, 255, 0.78);
+  line-height: 1.65;
+  font-size: 16px;
+}
+
+.cta-row {
+  display: flex;
+  justify-content: center;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.solid,
+.ghost {
+  padding: 14px 22px;
+  border-radius: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f8fbff;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.solid {
+  background: linear-gradient(135deg, #6ddcff 0%, #7f60ff 100%);
+}
+
+.solid:active,
+.ghost:active {
+  transform: translateY(1px);
+}
+
+.hint {
+  color: rgba(235, 242, 255, 0.65);
+  font-size: 13px;
+}
+
+.suggestions {
+  width: min(960px, 100%);
+  background: rgba(9, 14, 28, 0.6);
+  border-radius: 18px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
 }
 
 .suggestions-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-main);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.suggestion-card-v {
-  width: 100%;
-  border: 1px solid #f3f4f6;
-  border-radius: 20px;
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  box-shadow: var(--shadow-card);
-  cursor: pointer;
-  transition: transform 0.1s, box-shadow 0.2s ease;
-  background: #fff;
-}
-
-.suggestion-card-v:active {
-  transform: scale(0.98);
-  background: #f9fafb;
-}
-
-.card-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: #fff1f2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-}
-
-.card-info {
-  flex: 1;
   text-align: left;
+  margin: 0 0 12px 2px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: rgba(255, 255, 255, 0.85);
 }
 
-.card-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-main);
-  margin-bottom: 4px;
+.suggestions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
 }
 
-.card-desc {
-  font-size: 0.85rem;
-  color: var(--text-sub);
-}
-
-.bottom-interaction-area {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 20px 24px;
-  background: var(--card-bg);
-  padding-bottom: max(30px, env(safe-area-inset-bottom));
-  border-top: 1px solid #f3f4f6;
-}
-
-.talk-btn {
+.suggestion-card {
   width: 100%;
-  height: 56px;
-  border-radius: 28px;
-  border: none;
-  background: #22c55e;
-  color: white;
-  font-size: 1.1rem;
-  font-weight: 600;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: #f1f4ff;
+  padding: 14px;
   display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.suggestion-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
+  font-size: 20px;
 }
 
-.talk-btn:active {
-  transform: scale(0.98);
+.copy .title {
+  font-weight: 700;
 }
 
-.hint-text {
-  font-size: 0.85rem;
-  color: var(--text-sub);
+.copy .desc {
+  color: rgba(235, 242, 255, 0.7);
+  font-size: 13px;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
+@media (max-width: 720px) {
+  .welcome-shell {
+    padding: 40px 16px;
+    text-align: left;
+    align-items: stretch;
   }
-  to {
-    opacity: 1;
+  .hero {
+    text-align: left;
+  }
+  .cta-row {
+    justify-content: flex-start;
   }
 }
 </style>

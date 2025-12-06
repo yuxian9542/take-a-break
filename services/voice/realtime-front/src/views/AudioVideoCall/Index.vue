@@ -1,112 +1,105 @@
 <template>
-  <div class="experience">
-    <ChatHistorySidebar
-      ref="chatHistorySidebar"
-      :sessions="sessions"
-      :currentSessionId="currentSessionId"
-      :userId="getUserId()"
-      @session-selected="switchSession"
-      @new-session="handleNewSession"
-      @delete-session="handleDeleteSession"
-    />
-    <div class="experience__content">
-      <div class="experience__conversation">
-        <div class="app-container">
-          <div class="app-header">
-            <button 
-              class="mobile-menu-btn" 
-              @click="toggleSidebar"
-              v-if="isMobile"
-            >
-              <span class="icon">☰</span>
-            </button>
-            <div class="app-header__center">
-              <span
-                class="status-badge"
-                :class="{
-                  connected: isConnected,
-                  connecting: isConnecting,
-                }"
-              >
-                {{ isConnecting ? "Connecting..." : isConnected ? "Live" : "Ready" }}
-              </span>
-            </div>
-            <button 
-              class="settings-btn" 
-              @click="toggleSettingsSidebar"
-              title="Settings"
-            >
-              <span class="icon">⚙</span>
-            </button>
-          </div>
-          <div class="content-wrapper">
-            <MessageBox
-              ref="refMessageBox"
-              :class="{ 'show-tool-bar': isShowToolBar }"
-              :messageList="messageList"
-              :isConnecting="isConnecting"
-              :isShowWelcome="messageList.length === 0 && !isHistoryMode"
-              :isHistoryMode="isHistoryMode"
-              @onClickMedia="clickMedia"
-            />
-          </div>
-          <div class="input-container" v-show="isShowToolBar">
-            <ToolBar
-              ref="refToolBar"
-              :isConnected="isConnected"
-              :vadType="vadType"
-              :enableVideo="enableVideo"
-              @onPermissionError="audioPermisError"
-              @onOpenVideoOrScreen="openVideoOrScreen"
-              @onCloseVideoOrScreen="enableVideo = false"
-              @onDisconnect="closeWS"
-              @onClearAndConnect="clearAndConnect"
-              @onAudioData="audioData"
-              @onListenAudioData="listenAudioData"
-              @onVadStatus="vadStatus"
-              @onOpenAudio="enableAudio = true"
-              @onCloseAudio="enableAudio = false"
-            />
-          </div>
+  <MemoryLayout>
+    <StarfieldBackground />
+    <div class="memory-experience">
+      <header class="memory-header">
+        <div class="brand">
+          <span class="brand__eyebrow">Memory Stardust</span>
+          <span class="brand__subtitle">A sanctuary for your moments</span>
         </div>
+        <div
+          class="status-chip"
+          :class="{
+            connected: isConnected,
+            connecting: isConnecting,
+          }"
+        >
+          <span class="dot"></span>
+          {{ statusChip }}
+        </div>
+      </header>
+
+      <div class="memory-stage">
+        <IdleScreen
+          v-if="stage === 'idle'"
+          :statusText="statusNote"
+          @start="enterPreview"
+        />
+
+        <MemoryPreview
+          v-else-if="stage === 'preview'"
+          :gradient="currentPreview"
+          :description="previewCopy"
+          @visualize="startConversation"
+          @try-another="nextPreview"
+        />
+
+        <section v-else class="conversation-stage">
+          <div class="hero-copy">
+            <p class="eyebrow">Your Memory Awaits</p>
+            <h2>Let it drift into stardust.</h2>
+            <p class="lede">
+              Speak freely. We will keep only the latest whispers on screen, letting the rest fade
+              into the night.
+            </p>
+            <div class="session-actions">
+              <button class="ghost" type="button" @click="handleEndSession" :disabled="isConnecting">
+                End Session &amp; Save
+              </button>
+              <div class="session-hint">{{ statusNote }}</div>
+            </div>
+          </div>
+
+          <SubtitleTranscript
+            :messages="messageList"
+            :maxItems="subtitleLimit"
+            class="subtitle-track"
+          />
+
+          <div class="controls">
+            <MicButton
+              :state="micState"
+              :connecting="isConnecting"
+              :disabled="isConnecting"
+              :label="micLabel"
+              :hint="micHint"
+              @toggle="handleMicToggle"
+            />
+          </div>
+        </section>
       </div>
-      <SettingsSidebar
-        ref="settingsSidebar"
-        :modelId="panelParams.model"
-        :currentVoice="panelParams.voice"
+    </div>
+
+    <div class="toolbar-bridge" aria-hidden="true">
+      <ToolBar
+        ref="refToolBar"
         :isConnected="isConnected"
-        @model-selected="handleModelSelected"
-        @voice-selected="handleVoiceSelected"
-      />
-      <!-- OperatorPanel hidden - replaced by SettingsSidebar -->
-      <OperatorPanel
-        v-if="false"
-        class="experience__panel operator-panel-hidden"
-        :panelParams="panelParams"
-        :isConnected="isConnected"
+        :vadType="vadType"
         :enableVideo="enableVideo"
-        :videoType="videoType"
-        @onOpenVideoSuccess="openVideoOrScreenSuccess"
-        @onOpenVideoError="openVideoError"
-        @onOpenScreenSuccess="openVideoOrScreenSuccess"
-        @onOpenScreenError="openScreenError"
-        @onVideoImage="videoImage"
-        @onVideoData="vedioData"
-        @onVideoTrackEnded="videoTrackEnded"
-        @onResponseTypeChange="responseTypeChange"
-        @onApiKeyChange="(value) => (apiKey = value)"
+        @onPermissionError="audioPermisError"
+        @onOpenVideoOrScreen="openVideoOrScreen"
+        @onCloseVideoOrScreen="enableVideo = false"
+        @onDisconnect="closeWS"
+        @onClearAndConnect="clearAndConnect"
+        @onAudioData="audioData"
+        @onListenAudioData="listenAudioData"
+        @onVadStatus="vadStatus"
+        @onOpenAudio="enableAudio = true"
+        @onCloseAudio="enableAudio = false"
       />
     </div>
-  </div>
+  </MemoryLayout>
 </template>
 
 <script>
 import { ref } from "vue";
-import MessageBox from "./MessageBox.vue";
 import ToolBar from "./ToolBar.vue";
-import OperatorPanel from "./OperatorPanel.vue";
-import ChatHistorySidebar from "@/components/ChatHistorySidebar.vue";
-import SettingsSidebar from "@/components/SettingsSidebar.vue";
+import MemoryLayout from "@/components/memory/MemoryLayout.vue";
+import StarfieldBackground from "@/components/memory/StarfieldBackground.vue";
+import SubtitleTranscript from "@/components/memory/SubtitleTranscript.vue";
+import MicButton from "@/components/memory/MicButton.vue";
+import IdleScreen from "@/components/memory/IdleScreen.vue";
+import MemoryPreview from "@/components/memory/MemoryPreview.vue";
 import {
   MEDIA_TYPE,
   MSG_TYPE,
@@ -146,6 +139,18 @@ export default {
       isConnecting: false, // 是否正在连接
       isConnected: false, // 是否已连接
       isMobile: typeof window !== 'undefined' && window.innerWidth <= 768, // Mobile detection
+      stage: "idle", // idle | preview | conversation
+      statusNote: "Ready",
+      subtitleLimit: 3,
+      previewGradients: [
+        "linear-gradient(135deg, #1d1f3b 0%, #2f3a64 30%, #111829 100%)",
+        "linear-gradient(145deg, #1e0f2b 0%, #3a1c45 50%, #0a0c1e 100%)",
+        "linear-gradient(155deg, #0d1f2a 0%, #153f5b 50%, #05070f 100%)",
+      ],
+      previewIndex: 0,
+      previewCopy:
+        "A glimpse of your memory. Particles peel away from the frame, ready to become a living story.",
+      isSpeaking: false,
       // 右侧参数面板参数对象
       panelParams: {
         model: "", // 模型
@@ -467,6 +472,35 @@ Bad: long analytical explanations.
       sessionCache: {}, // 会话缓存 { sessionId: messages[] }
     };
   },
+  computed: {
+    statusChip() {
+      if (this.isConnecting) return "Connecting...";
+      if (this.isConnected) return "Live";
+      return "Ready";
+    },
+    currentPreview() {
+      if (!this.previewGradients || this.previewGradients.length === 0) return "";
+      return this.previewGradients[this.previewIndex % this.previewGradients.length];
+    },
+    micState() {
+      return this.isSpeaking ? "recording" : "idle";
+    },
+    micLabel() {
+      if (this.isConnecting) return "Connecting...";
+      if (!this.isConnected) return "Tap to start memory";
+      if (this.isSpeaking) return "Listening...";
+      return "Tap to speak";
+    },
+    micHint() {
+      if (this.isConnected && this.isSpeaking) {
+        return "Stay close to the mic. Silence will stop the capture.";
+      }
+      if (this.isConnected) {
+        return "Tap once to begin, pause to let the AI respond.";
+      }
+      return "Start the session to begin speaking.";
+    },
+  },
   watch: {
     // vad模式
     "panelParams.turn_detection.type": {
@@ -491,46 +525,35 @@ Bad: long analytical explanations.
     },
   },
   methods: {
-    // Toggle sidebar on mobile
-    toggleSidebar() {
-      const sidebar = this.$refs.chatHistorySidebar;
-      if (sidebar) {
-        if (sidebar.isMobileVisible) {
-          sidebar.closeMobile();
-        } else {
-          sidebar.openMobile();
-        }
+    // UI stage transitions
+    enterPreview() {
+      this.stage = "preview";
+      this.statusNote = "Select a memory to explore";
+    },
+    nextPreview() {
+      this.previewIndex = (this.previewIndex + 1) % this.previewGradients.length;
+    },
+    startConversation() {
+      this.stage = "conversation";
+      this.statusNote = "Connecting...";
+      this.clearAndConnect();
+    },
+    handleMicToggle() {
+      if (!this.isConnected) {
+        this.startConversation();
+        return;
+      }
+      if (this.$refs.refToolBar && this.$refs.refToolBar.handleAudio) {
+        this.$refs.refToolBar.handleAudio();
       }
     },
-    // Toggle settings sidebar
-    toggleSettingsSidebar() {
-      const sidebar = this.$refs.settingsSidebar;
-      if (sidebar) {
-        if (sidebar.isMobileVisible) {
-          sidebar.closeMobile();
-        } else {
-          sidebar.openMobile();
-        }
-      }
-    },
-    // Handle model selection
-    handleModelSelected(value) {
-      this.panelParams.model = value;
-    },
-    // Handle voice selection
-    handleVoiceSelected(value) {
-      this.panelParams.voice = value;
-    },
-    // 服务响应返回输出方式
-    responseTypeChange(value) {
-      this.responseType = value;
+    handleEndSession() {
+      this.statusNote = "Session saved. Ready for a new memory.";
+      this.isSpeaking = false;
+      this.closeWS();
+      this.stage = "idle";
     },
     /** ********************************************** WebSocket通信 ******************************************/
-    clickMedia(mediaType) {
-      // Always use audio mode
-      this.panelParams.beta_fields.chat_mode = CALL_MODE_TYPE.AUDIO;
-      this.openWS(MEDIA_TYPE.AUDIO);
-    },
     // 初始化websocket连接
     async openWS(mediaType = MEDIA_TYPE.AUDIO) {
       // 创建 SockJS 连接
@@ -548,6 +571,7 @@ Bad: long analytical explanations.
       
       this.isConnecting = true;
       this.isConnected = false;
+      this.statusNote = "Connecting...";
       this.isShowToolBar = true; // Show toolbar immediately for audio mode
 
       const domain = ref(import.meta.env.VITE_APP_DOMAIN);
@@ -561,6 +585,7 @@ Bad: long analytical explanations.
       this.sock.onopen = () => {
         this.isConnecting = false;
         this.isConnected = true;
+        this.statusNote = "Live — tap the mic to speak";
         console.log("%c Connection opened", "color: #ff59ff");
       };
       // 监听收到消息事件
@@ -571,8 +596,10 @@ Bad: long analytical explanations.
       // 监听连接关闭事件
       this.sock.onclose = () => {
         this.isConnected = false;
+        this.isSpeaking = false;
         this.currentAudioBlob = null;
         this.currentVideoBlob = null;
+        this.statusNote = "Connection closed";
         console.log("%c Connection closed", "color: #ff59ff");
         // Refresh session list after a delay to allow Firestore writes to complete
         setTimeout(() => {
@@ -583,6 +610,7 @@ Bad: long analytical explanations.
       this.sock.onerror = (e) => {
         this.isConnecting = false;
         this.isConnected = false;
+        this.statusNote = "Connection error";
         this.$message.error("Connection error!");
         console.log("%c Connection onerror", "color: #ff59ff");
       };
@@ -597,6 +625,9 @@ Bad: long analytical explanations.
         this.loadSessionsList();
       }
       
+      this.isSpeaking = false;
+      this.isConnecting = false;
+
       // 关闭连接
       if (this.sock && this.sock.readyState === WebSocket.OPEN) {
         this.sock.close();
@@ -702,6 +733,7 @@ Bad: long analytical explanations.
         }
         emitter.emit("onStopAudio"); // 停止音频
       }
+      this.isSpeaking = isSpeaking;
     },
     // 实时监听音频数据并推送到服务器
     async listenAudioData(blob) {
@@ -926,6 +958,10 @@ Bad: long analytical explanations.
       this.clearObjectURL(); // 清空残留对象url
       this.messageList = []; // 清空消息
       this.isConnected = false; // 确保连接状态重置
+      this.isHistoryMode = false;
+      this.isSpeaking = false;
+      this.stage = "conversation";
+      this.statusNote = "Connecting...";
       
       // Create session and open connection - don't block on session creation
       this.createNewSession().then(() => {
@@ -983,11 +1019,11 @@ Bad: long analytical explanations.
     },
     // 循环滚动到底部
     loopScrollToBotton() {
-      this.$refs.refMessageBox.loopScrollToBotton();
+      // Subtitles stay centered; no scroll handling needed.
     },
     // 滚动到底部
     scrollToBottom() {
-      this.$refs.refMessageBox.scrollToBottom();
+      // Subtitles stay centered; no scroll handling needed.
     },
     /** ********************************************** Chat History Management ******************************************/
     // 获取当前用户ID
@@ -1186,7 +1222,7 @@ Bad: long analytical explanations.
       }
     },
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.clearObjectURL(); // 清空残留对象url
     this.closeWS(); // 关闭websocket连接
     // Clear session list refresh timer
@@ -1194,13 +1230,19 @@ Bad: long analytical explanations.
       clearTimeout(this._sessionListRefreshTimer);
       this._sessionListRefreshTimer = null;
     }
+    if (this._resizeHandler) {
+      window.removeEventListener('resize', this._resizeHandler);
+      this._resizeHandler = null;
+    }
   },
   components: {
-    MessageBox,
     ToolBar,
-    OperatorPanel,
-    ChatHistorySidebar,
-    SettingsSidebar,
+    MemoryLayout,
+    StarfieldBackground,
+    SubtitleTranscript,
+    MicButton,
+    IdleScreen,
+    MemoryPreview,
   },
   async mounted() {
     // Show toolbar immediately for audio mode
@@ -1212,9 +1254,10 @@ Bad: long analytical explanations.
     
     // Check mobile on mount and add resize listener
     this.isMobile = window.innerWidth <= 768;
-    window.addEventListener('resize', () => {
+    this._resizeHandler = () => {
       this.isMobile = window.innerWidth <= 768;
-    });
+    };
+    window.addEventListener('resize', this._resizeHandler);
     
     // Load sessions list
     await this.loadSessionsList();
@@ -1226,262 +1269,211 @@ Bad: long analytical explanations.
 </script>
 
 <style scoped lang="less">
-.experience {
-  height: 100%;
-  padding: 24px;
-  background: var(--va-bg-color);
-  display: flex;
-  gap: 24px;
-  &__content {
-    display: flex;
-    gap: 24px;
-    height: 100%;
-    flex: 1;
-    min-width: 0;
-    position: relative;
-    justify-content: center;
-  }
-  &__conversation {
-    display: flex;
-    justify-content: center;
-    align-items: stretch;
-    min-width: 0;
-    flex: 1;
-    max-width: 100%;
-  }
-  &__panel {
-    background: #fff;
-    border-radius: 24px;
-    box-shadow: var(--va-strong-shadow);
-    overflow: hidden;
-    min-width: 360px;
-  }
-  
-  // Hide OperatorPanel completely
-  .operator-panel-hidden {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    width: 0 !important;
-    height: 0 !important;
-    overflow: hidden !important;
-    position: absolute !important;
-    left: -9999px !important;
-    pointer-events: none !important;
-  }
-  
-  // Settings sidebar positioning
-  :deep(.settings-sidebar) {
-    @media (max-width: 768px) {
-      position: fixed;
-      right: -280px;
-      top: 0;
-      bottom: 0;
-      z-index: 1000;
-      transition: right 0.3s ease;
-      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
-      
-      &.mobile-visible {
-        right: 0;
-      }
-    }
-  }
-}
-
-.app-container {
-  width: 100%;
-  max-width: 480px;
-  background: var(--va-card-bg);
-  border-radius: 32px;
-  box-shadow: var(--va-shadow-soft);
+.memory-experience {
+  position: relative;
+  min-height: 100vh;
+  padding: 32px 20px 52px;
   display: flex;
   flex-direction: column;
-  padding: 16px 16px 0;
-  min-height: 680px;
+  gap: 32px;
+  z-index: 1;
+  color: #f2f6ff;
 }
 
-.app-header {
-  padding: 8px 8px 4px;
+.memory-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  background: rgba(8, 12, 28, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.brand__eyebrow {
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.65);
+  text-transform: uppercase;
+}
+
+.brand__subtitle {
+  font-size: 16px;
+  color: rgba(235, 242, 255, 0.75);
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: rgba(68, 103, 255, 0.18);
+  color: #9fc5ff;
+  font-weight: 700;
+  font-size: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status-chip .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #9fc5ff;
+  box-shadow: 0 0 8px rgba(159, 197, 255, 0.8);
+}
+
+.status-chip.connected {
+  background: rgba(76, 175, 80, 0.18);
+  color: #c8facc;
+}
+
+.status-chip.connected .dot {
+  background: #8ff8a1;
+  box-shadow: 0 0 8px rgba(143, 248, 161, 0.8);
+}
+
+.status-chip.connecting {
+  background: rgba(255, 193, 82, 0.16);
+  color: #ffe8b3;
+}
+
+.status-chip.connecting .dot {
+  background: #ffd166;
+  box-shadow: 0 0 8px rgba(255, 209, 102, 0.75);
+}
+
+.memory-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+}
+
+.conversation-stage {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  text-align: center;
+  padding: 12px;
+}
+
+.hero-copy {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hero-copy .eyebrow {
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.hero-copy h2 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+.hero-copy .lede {
+  margin: 0;
+  color: rgba(235, 242, 255, 0.78);
+  line-height: 1.6;
+}
+
+.session-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.session-actions .ghost {
+  padding: 12px 20px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f8fbff;
+  cursor: pointer;
+  font-weight: 700;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.session-actions .ghost:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.session-actions .ghost:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+}
+
+.session-hint {
+  color: rgba(235, 242, 255, 0.7);
+  font-size: 13px;
+}
+
+.subtitle-track {
+  margin-top: 4px;
+}
+
+.controls {
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  
-  .mobile-menu-btn {
-    position: absolute;
-    left: 0;
-    display: none;
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    border: 1px solid var(--va-soft-border);
-    background: #fff;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    
-    @media (max-width: 768px) {
-      display: flex;
-    }
-    
-    &:hover {
-      background: var(--va-muted-surface);
-    }
-    
-    .icon {
-      font-size: 20px;
-      color: var(--va-text-main);
-    }
-  }
-  
-  &__center {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .settings-btn {
-    position: absolute;
-    right: 0;
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    border: 1px solid var(--va-soft-border);
-    background: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    
-    &:hover {
-      background: var(--va-muted-surface);
-    }
-    
-    .icon {
-      font-size: 20px;
-      color: var(--va-text-main);
-    }
-  }
 }
 
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 28px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: #eef2ff;
-  color: #4338ca;
-  font-size: 12px;
-  font-weight: 600;
-  &.connecting {
-    background: #fff7ed;
-    color: #c2410c;
-  }
-  &.connected {
-    background: #ecfdf3;
-    color: #15803d;
-  }
+.toolbar-bridge {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
 }
 
-.content-wrapper {
-  flex: 1;
-  min-height: 0;
-  padding: 8px;
-}
-
-.input-container {
-  padding: 8px 8px 20px;
-}
-
-.show-tool-bar {
-  height: 100%;
-}
-
-@media (max-width: 1200px) {
-  .experience {
-    padding: 12px;
+@media (max-width: 960px) {
+  .memory-header {
     flex-direction: column;
-    &__content {
-      grid-template-columns: 1fr;
-    }
-    &__panel {
-      min-width: 0;
-    }
+    align-items: flex-start;
   }
-  .app-container {
-    max-width: 100%;
-    min-height: 640px;
+  .memory-experience {
+    padding: 20px 14px 36px;
   }
 }
 
-// Mobile styles (iPhone and small screens)
-@media (max-width: 768px) {
-  .experience {
-    padding: 8px;
-    gap: 12px;
-    position: relative;
-    
-    // Hide sidebar by default on mobile, show as overlay when needed
-    :deep(.chat-history-sidebar) {
-      position: fixed;
-      left: -280px;
-      top: 0;
-      bottom: 0;
-      z-index: 1000;
-      transition: left 0.3s ease;
-      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
-      
-      &.mobile-visible {
-        left: 0;
-      }
-    }
+@media (max-width: 640px) {
+  .memory-experience {
+    gap: 22px;
   }
-  
-  .app-container {
-    max-width: 100%;
-    min-height: auto;
-    padding: 12px 12px 0;
-    border-radius: 24px;
+  .conversation-stage {
+    gap: 26px;
+    padding: 0;
   }
-  
-  .experience__content {
-    width: 100%;
+  .hero-copy h2 {
+    font-size: 26px;
   }
-  
-  .experience__panel {
-    min-width: 0;
-    width: 100%;
-  }
-}
-
-@media (max-width: 480px) {
-  .experience {
-    padding: 4px;
-  }
-  
-  .app-container {
-    padding: 8px 8px 0;
-    border-radius: 16px;
-    min-height: calc(100vh - 16px);
-  }
-  
-  .app-header {
-    padding: 4px 4px 2px;
-    h3 {
-      font-size: 18px;
-    }
-  }
-  
-  .content-wrapper {
-    padding: 4px;
-  }
-  
-  .input-container {
-    padding: 4px 4px 12px;
+  .hero-copy .lede {
+    font-size: 14px;
   }
 }
 </style>
